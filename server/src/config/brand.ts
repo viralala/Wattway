@@ -14,7 +14,7 @@ export const BRAND = Object.freeze({
   team: 'Team Kothimbir 🌿',
   teamSlug: 'team-kothimbir',
   emoji: '🌿',
-  repository: 'https://github.com/viralala/wattway',
+  repository: 'https://github.com/viralala/Wattway',
   /**
    * HTTP header values must be latin-1 (RFC 7230), so anything that ends up in
    * a header has to stay ASCII. The emoji lives in JSON bodies and the boot

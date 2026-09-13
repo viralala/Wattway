@@ -8,7 +8,7 @@
 
 Built by **Team Kothimbir 🌿**
 
-[![Server CI](https://github.com/viralala/wattway/actions/workflows/server-ci.yml/badge.svg)](https://github.com/viralala/wattway/actions/workflows/server-ci.yml)
+[![Server CI](https://github.com/viralala/Wattway/actions/workflows/server-ci.yml/badge.svg)](https://github.com/viralala/Wattway/actions/workflows/server-ci.yml)
 ![Node](https://img.shields.io/badge/node-%E2%89%A518.18-339933?logo=node.js&logoColor=white)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.5-3178C6?logo=typescript&logoColor=white)
 ![Express](https://img.shields.io/badge/Express-4.19-000000?logo=express&logoColor=white)
@@ -122,8 +122,8 @@ structure can be demonstrated and tested entirely on its own.
 cluster).
 
 ```bash
-git clone https://github.com/viralala/wattway.git
-cd wattway/server
+git clone https://github.com/viralala/Wattway.git
+cd Wattway/server
 
 npm install
 cp .env.example .env          # then set MONGO_URI and the two JWT secrets
