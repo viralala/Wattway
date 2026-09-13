@@ -1,0 +1,14 @@
+# WattWay - Team Kothimbir
+# Normalise line endings so Windows, macOS and Linux teammates stop generating
+# whole-file diffs on each other's commits.
+
+* text=auto eol=lf
+
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.docx binary
+*.xlsx binary

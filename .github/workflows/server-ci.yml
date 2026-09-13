@@ -1,0 +1,64 @@
+# ── WattWay · Team Kothimbir 🌿 ─────────────────────────────────────────────
+# Server CI: typecheck, build and the full Jest suite on every push and PR.
+#
+# The data-structure unit tests need nothing but Node. The integration tests
+# download a mongod binary via mongodb-memory-server, which is cached between
+# runs so only the first job on a new runner pays for it.
+
+name: Server CI
+
+on:
+  push:
+    branches: ['**']
+    paths:
+      - 'server/**'
+      - '.github/workflows/server-ci.yml'
+  pull_request:
+    paths:
+      - 'server/**'
+      - '.github/workflows/server-ci.yml'
+  workflow_dispatch:
+
+defaults:
+  run:
+    working-directory: server
+
+jobs:
+  test:
+    name: typecheck · build · test
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: ['20.x', '22.x']
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Use Node ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: npm
+          cache-dependency-path: server/package-lock.json
+
+      - name: Cache the mongodb-memory-server binary
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/mongodb-binaries
+          key: mongodb-binaries-${{ runner.os }}
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Build
+        run: npm run build
+
+      - name: Test
+        run: npm test
+        env:
+          NODE_ENV: test
