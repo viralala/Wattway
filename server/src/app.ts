@@ -24,6 +24,7 @@
  * ============================================================================
  */
 
+import path from 'node:path';
 import express, { type Express } from 'express';
 import cors, { type CorsOptions } from 'cors';
 import helmet from 'helmet';
@@ -51,18 +52,19 @@ export function createApp(): Express {
   app.use(helmet());
   app.disable('x-powered-by');
 
-  const corsOptions: CorsOptions = {
-    origin(origin, callback) {
-      // No Origin header: curl, Postman, server-to-server. Not a browser, so
-      // CORS is not the control that matters — let it through.
-      if (!origin) return callback(null, true);
-      if (env.corsOrigins.includes(origin) || env.corsOrigins.includes('*')) {
-        return callback(null, true);
-      }
-      return callback(new Error(`Origin ${origin} is not allowed by CORS`));
-    },
-    credentials: true,
-    exposedHeaders: ['X-Request-Id', 'X-WattWay-Team'],
+  // Per-request options, so a request can be recognised as same-origin. Browsers
+  // attach `Origin` to same-origin POSTs too, which matters now that the server
+  // hosts the dashboard it is called from.
+  const corsOptions = (req: express.Request, callback: (err: Error | null, options?: CorsOptions) => void): void => {
+    const origin = req.header('Origin');
+    const sameOrigin = origin !== undefined && origin === `${req.protocol}://${req.get('host')}`;
+    const allowed =
+      !origin || // curl, Postman, server-to-server: not a browser, CORS is not the control
+      sameOrigin ||
+      env.corsOrigins.includes(origin) ||
+      env.corsOrigins.includes('*');
+    if (!allowed) return callback(new Error(`Origin ${origin} is not allowed by CORS`));
+    callback(null, { origin: true, credentials: true, exposedHeaders: ['X-Request-Id', 'X-WattWay-Team'] });
   };
   app.use(cors(corsOptions));
 
@@ -83,6 +85,11 @@ export function createApp(): Express {
       }),
     );
   }
+
+  // The dashboard is plain static files, served from the same origin as the API
+  // so the browser needs no CORS allowance and no build step.
+  app.use('/dashboard', express.static(path.resolve(__dirname, '../../client/public/dashboard')));
+  // (static files sit before the limiter: page loads must not spend the API quota)
 
   app.use(apiLimiter);
 
