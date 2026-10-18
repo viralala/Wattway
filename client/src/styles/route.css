@@ -1,0 +1,70 @@
+/* WattWay · Team Kothimbir 🌿 — Route planner */
+
+.rt-layout { display: grid; grid-template-columns: minmax(260px, 300px) minmax(0, 1fr); gap: 1.25rem; align-items: start; }
+@media (max-width: 920px) { .rt-layout { grid-template-columns: 1fr; } }
+.rt-controls { display: grid; gap: 1rem; }
+/* minmax(0, 1fr) stops the no-wrap table from widening the column past the page */
+.rt-main { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1.25rem; min-width: 0; }
+.rt-panel { display: grid; gap: .9rem; }
+.rt-panel h3 { margin: 0; font-size: 1.35rem; }
+.rt-panel small { font-family: var(--font-body-strong); font-size: .8rem; }
+
+.rt-presets { gap: .4rem; }
+.rt-presets .btn[aria-pressed='true'] { background: var(--plum); color: #fff; }
+.rt-total { margin: 0; font-size: .85rem; color: var(--ink-soft); }
+
+/* factor colours: used by the swatches and the score bars */
+.rt-sw.distance, .rt-bar-lost.distance { background: var(--route); }
+.rt-sw.wait, .rt-bar-lost.wait { background: var(--warn); }
+.rt-sw.price, .rt-bar-lost.price { background: var(--red); }
+
+.rt-live { border-top: 1px dashed var(--route); padding-top: .75rem; font-size: .92rem; }
+.rt-live ol { margin: .4rem 0 0; padding-left: 1.3rem; display: grid; gap: .25rem; }
+.rt-live li > span:first-child { margin-right: .5rem; }
+.rt-live-score { float: right; font-weight: 700; color: var(--plum); font-variant-numeric: tabular-nums; }
+.rt-live p { margin: .4rem 0 0; }
+
+/* ── Summary ── */
+.rt-summary { display: grid; gap: .75rem; }
+.rt-summary p { margin: 0; }
+.rt-summary-top { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: .5rem 1rem; }
+.rt-summary-top h3 { margin: 0; font-size: 1.45rem; }
+.rt-chosen { display: grid; gap: .75rem; border-top: 1px dashed var(--route); padding-top: .9rem; }
+.rt-chosen h4 { font-family: var(--font-body); font-weight: 700; font-size: 1.35rem; margin: 0; }
+.eyebrow-sm { font-family: var(--font-script); color: var(--plum); font-size: 1.7rem; line-height: 1; margin: 0; }
+
+/* ── Map ── */
+.st-dot.rt-a { background: var(--ok); }
+.st-dot.rt-b { background: var(--red); }
+.st-dot.rt-other { background: var(--cream); box-shadow: 0 0 0 2px var(--plum); }
+.rt-direct { stroke: var(--ink); stroke-width: .3; stroke-dasharray: 1 1; opacity: .45; }
+.rt-route-casing { fill: none; stroke: #fff; stroke-width: 1.9; stroke-linecap: round; }
+.rt-route { fill: none; stroke: var(--plum); stroke-width: 1.1; stroke-linecap: round; }
+.rt-stop { cursor: pointer; outline: none; }
+.rt-stop circle { fill: var(--cream); stroke: var(--plum); stroke-width: .4; transition: r .15s ease; }
+.rt-stop text { font: 700 2.1px var(--font-body-strong); fill: var(--plum); text-anchor: middle; pointer-events: none; }
+.rt-stop:hover circle, .rt-stop:focus-visible circle { fill: #fff; stroke-width: .6; }
+.rt-stop.chosen circle { fill: var(--plum); stroke: var(--bolt); stroke-width: .5; }
+.rt-stop.chosen text { fill: #fff; font-size: 2.6px; }
+.rt-end circle { stroke: #fff; stroke-width: .45; }
+.rt-end.start circle { fill: var(--ok); }
+.rt-end.finish circle { fill: var(--red); }
+.rt-end-letter { font: 700 2.4px var(--font-body-strong); fill: #fff; text-anchor: middle; }
+.rt-end-label {
+  font: 700 2.6px var(--font-body-strong); fill: var(--ink);
+  paint-order: stroke; stroke: #f7f0d8; stroke-width: .8; stroke-linejoin: round;
+}
+
+/* ── Ranked table ── */
+.rt-explain { font-size: .92rem; }
+.rt-table th, .rt-table td { padding: .55rem .6rem; }
+.rt-table tr.chosen td { background: rgba(122, 31, 75, .08); }
+.rt-table tr.chosen td:first-child { box-shadow: inset 4px 0 0 var(--plum); }
+.rt-pick { font: inherit; font-weight: 600; color: var(--plum); background: none; border: 0; padding: .2rem 0; cursor: pointer; text-align: left; text-decoration: underline; text-underline-offset: 3px; text-decoration-color: rgba(122, 31, 75, .35); }
+.rt-pick:hover { color: var(--red-deep); }
+.rt-rate { display: block; font-size: .8rem; color: var(--ink-soft); }
+.rt-score { display: inline-flex; align-items: center; gap: .5rem; }
+.rt-bar { display: inline-flex; width: 80px; height: 10px; border-radius: 5px; overflow: hidden; background: var(--line); }
+.rt-bar-kept { background: var(--ok); }
+.rt-score-num { font-weight: 700; font-variant-numeric: tabular-nums; min-width: 2ch; text-align: right; }
+.rt-ruled { font-size: .9rem; margin: .9rem 0 0; }

@@ -1,0 +1,46 @@
+/* WattWay · Team Kothimbir 🌿 — design tokens. Every page reads from here. */
+:root {
+  /* ink & accents sampled from the design image */
+  --ink: #14303f;
+  --ink-soft: #3b5563;
+  --pink: #d0566b;
+  --pink-deep: #b13f56; /* AA-contrast variant for small text */
+  --plum: #7a1f4b;
+  --red: #d93a2b;
+  --red-deep: #b72b1e;
+  --bolt: #ffd23f;
+  --bolt-glow: rgba(255, 210, 63, 0.75);
+  --teal: #0e3b33;
+
+  /* surfaces */
+  --cream: #fbf6e4;
+  --cream-glass: rgba(251, 246, 228, 0.88);
+  --leaf: #e6f0cf;
+  --leaf-deep: #cfe2a8;
+  --water: #bfe0dc;
+  --route: #b59a76; /* the dashed trail colour on the map */
+  --line: rgba(20, 48, 63, 0.18);
+  --ok: #2f7d4f;
+  --warn: #b7791f;
+
+  /* algorithm colours (Algorithm Lab) */
+  --algo-dijkstra: #d93a2b;
+  --algo-astar: #1f6fb2;
+  --algo-bellman: #7a1f4b;
+  --algo-floyd: #2f7d4f;
+  --algo-tsp-exact: #b7791f;
+  --algo-tsp-nn: #6b4fa0;
+
+  /* type */
+  --font-script: 'Pinyon Script', 'Snell Roundhand', cursive;
+  --font-head: 'Italiana', 'Didot', Georgia, serif;
+  --font-body: 'Cormorant Garamond', Georgia, serif;
+  --font-body-strong: 'Lora', Georgia, serif; /* fallback when Cormorant is too thin */
+
+  /* shape */
+  --radius: 18px;
+  --radius-sm: 10px;
+  --shadow: 0 10px 30px -12px rgba(20, 48, 63, 0.35);
+  --maxw: 1120px;
+  --gutter: clamp(1rem, 4vw, 2rem);
+}
