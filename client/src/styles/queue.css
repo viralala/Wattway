@@ -1,0 +1,68 @@
+/* WattWay · Team Kothimbir 🌿 — Virtual queue */
+
+.q-sim { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 1rem 1.5rem; border: 2px dashed var(--bolt); background: #fffaf0; }
+.q-sim-text { display: grid; gap: .4rem; max-width: 60ch; }
+.q-sim-text p { margin: 0; font-size: .92rem; }
+.q-sim-text .badge { justify-self: start; }
+.q-sim-controls { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; }
+.q-clock { font-family: ui-monospace, Consolas, monospace; font-size: 1.5rem; font-weight: 700; color: var(--ink); min-width: 5ch; font-variant-numeric: tabular-nums; }
+.q-speed { display: inline-flex; gap: .25rem; }
+.q-speed .btn[aria-pressed='true'] { background: var(--plum); color: #fff; }
+
+.q-station { margin: 1.25rem 0; max-width: 520px; }
+.q-station small { font-family: var(--font-body-strong); font-size: .85rem; }
+
+.q-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr); gap: 1.25rem; align-items: start; }
+@media (max-width: 920px) { .q-layout { grid-template-columns: minmax(0, 1fr); } }
+.q-col { display: grid; gap: 1.25rem; grid-template-columns: minmax(0, 1fr); }
+.q-col h3 { font-size: 1.35rem; }
+
+/* ── Your status ── */
+.q-you { display: grid; gap: .8rem; }
+.q-you p { margin: 0; }
+.q-you.waiting { border: 2px solid var(--plum); }
+.q-you.called { border: 2px solid var(--ok); background: #eef8f0; }
+.q-you.charging { border: 2px solid var(--ok); }
+.q-big { display: flex; align-items: baseline; gap: .8rem; flex-wrap: wrap; }
+.q-big-num { font-family: var(--font-body); font-weight: 700; font-size: clamp(3rem, 7vw, 4.2rem); line-height: 1; color: var(--plum); font-variant-numeric: lining-nums; }
+.q-you.called .q-big-num, .q-you.charging .q-big-num { color: var(--ok); }
+.q-big-sub { font-weight: 600; font-size: 1.05rem; }
+.q-msg { font-weight: 600; padding: .5rem .75rem; border-radius: var(--radius-sm); background: var(--leaf); }
+.q-progress { height: 10px; border-radius: 5px; background: var(--line); overflow: hidden; }
+.q-progress span { display: block; height: 100%; background: var(--plum); transition: width .4s ease; }
+
+/* ── Line ── */
+.q-head { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; }
+.q-line { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 1.1rem .6rem; }
+.q-node {
+  position: relative; display: grid; gap: .1rem; min-width: 118px; padding: .55rem .7rem;
+  background: #fff; border: 2px solid var(--line); border-radius: var(--radius-sm); font-size: .85rem;
+}
+/* the ⇄ link between neighbouring nodes */
+.q-node + .q-node::before {
+  content: '⇄'; position: absolute; left: -.62rem; top: 50%; transform: translate(-50%, -50%);
+  color: var(--route); font-weight: 700; font-size: .95rem;
+}
+.q-node.you { border-color: var(--plum); background: #f8eaf0; }
+.q-node-pos { font-weight: 700; color: var(--plum); }
+.q-node-plate { font-family: ui-monospace, Consolas, monospace; font-weight: 600; letter-spacing: .02em; }
+.q-node.you .q-node-plate { font-family: var(--font-body-strong); font-weight: 700; }
+.q-node-tag { font-size: .72rem; color: var(--ink-soft); text-transform: uppercase; letter-spacing: .05em; }
+.q-empty { margin: 0; }
+.q-note { font-size: .85rem; margin: 1rem 0 0; }
+
+/* ── Ports ── */
+.q-ports { grid-template-columns: repeat(auto-fill, minmax(128px, 1fr)); }
+.q-ports .st-port { min-height: 5.4rem; align-content: start; }
+.q-port-who { font-family: ui-monospace, Consolas, monospace; font-size: .76rem; font-weight: 600; }
+.st-port.held { background: #e3f3e8; border-color: var(--ok); border-style: dashed; }
+.st-port.held .st-port-status { color: var(--ok); }
+.st-port.you { box-shadow: 0 0 0 3px rgba(122, 31, 75, .35); }
+.q-ports .st-port-status { text-transform: none; font-size: .78rem; }
+
+/* ── Log ── */
+.q-log { list-style: none; margin: 0; padding: 0; display: grid; gap: .45rem; font-size: .88rem; }
+.q-log li { display: grid; grid-template-columns: 3.4rem 1fr; gap: .5rem; padding-bottom: .45rem; border-bottom: 1px dashed var(--line); }
+.q-log li.mine { color: var(--plum); font-weight: 600; }
+.q-log-time { font-family: ui-monospace, Consolas, monospace; color: var(--ink-soft); }
+.q-op { display: inline-block; margin-left: .4rem; font-family: ui-monospace, Consolas, monospace; font-size: .74rem; font-weight: 500; color: var(--ink); background: var(--leaf); padding: .05rem .4rem; border-radius: 4px; }

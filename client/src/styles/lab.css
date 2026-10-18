@@ -1,0 +1,43 @@
+/* WattWay · Team Kothimbir 🌿 — Algorithm Lab */
+
+/* minmax(0, 1fr), not 1fr: a plain 1fr track grows to fit wide tables and pushes the page past a phone's width */
+.lab-layout { display: grid; grid-template-columns: minmax(270px, 340px) minmax(0, 1fr); gap: 1.25rem; align-items: start; }
+@media (max-width: 920px) { .lab-layout { grid-template-columns: minmax(0, 1fr); } }
+
+.lab-controls { display: grid; gap: 1rem; position: sticky; top: 76px; }
+@media (max-width: 920px) { .lab-controls { position: static; } }
+.lab-main { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1.25rem; min-width: 0; }
+
+.lab-legend { display: flex; flex-wrap: wrap; gap: .4rem 1.1rem; margin-bottom: .75rem; }
+
+.lab-map-wrap { position: relative; }
+.lab-map { display: block; width: 100%; height: auto; aspect-ratio: 1 / 1; border-radius: var(--radius-sm); border: 2px solid var(--route); cursor: crosshair; background: var(--cream); touch-action: manipulation; }
+.lab-map.placeholder { display: grid; place-items: center; color: var(--ink-soft); font-family: var(--font-body-strong); }
+.lab-map-bg { fill: var(--cream); }
+.lab-road { stroke: rgba(20, 48, 63, .38); stroke-width: .1; }
+.lab-road.regen { stroke: #1d8a8a; stroke-width: .2; }
+.lab-node { stroke: rgba(20, 48, 63, .55); stroke-width: .05; }
+.lab-pin circle { stroke: #fff; stroke-width: .15; }
+.lab-pin.start circle { fill: var(--ok); }
+.lab-pin.end circle { fill: var(--red); }
+.lab-pin text, .lab-stop text { fill: #fff; font: 700 1.1px var(--font-body-strong); pointer-events: none; }
+.lab-stop circle { fill: var(--plum); stroke: var(--bolt); stroke-width: .15; }
+.lab-stop text { font-size: 1px; }
+.lab-busy { position: absolute; top: .6rem; right: .6rem; }
+.lab-help { font-size: .9rem; margin: .75rem 0 0; }
+
+.lab-explore { border: 1px solid var(--line); border-radius: var(--radius-sm); padding: .6rem .8rem .8rem; display: grid; gap: .35rem; margin: 0; }
+.lab-explore legend { font-family: var(--font-body-strong); font-weight: 600; font-size: .9rem; padding: 0 .4rem; }
+
+.tradeoff { margin: 0; padding: .6rem .8rem; background: var(--leaf); border-radius: var(--radius-sm); font-size: .9rem; }
+.lab-notes { margin: 1rem 0 0; padding: 0; list-style: none; display: grid; gap: .5rem; font-size: .92rem; }
+
+.lab-bench { margin-top: 1.25rem; }
+.lab-chart { width: 100%; height: auto; margin-top: 1rem; overflow: visible; }
+.lab-chart text { font: 500 12px var(--font-body-strong); fill: var(--ink); }
+.lab-chart .axis-title { font-weight: 600; }
+.lab-chart .grid { stroke: var(--line); stroke-dasharray: 3 4; }
+.lab-chart .axis { stroke: var(--ink); stroke-width: 1.5; }
+
+.algo-card p { font-size: 1rem; }
+.algo-line { font-size: .92rem !important; }

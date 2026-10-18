@@ -1,0 +1,115 @@
+/* WattWay · Team Kothimbir 🌿 — homepage */
+
+.hero {
+  position: relative;
+  overflow: hidden;
+  min-height: min(100vh, 820px);
+  background: var(--map-bg) center / cover;
+  isolation: isolate;
+}
+.hero::before { /* keeps the tagline legible over the busiest part of the map */
+  content: ''; position: absolute; inset: 0; z-index: -1;
+  background: radial-gradient(ellipse at 30% 40%, rgba(251, 246, 228, .55), transparent 65%);
+}
+.hero-inner { padding-block: clamp(2rem, 6vw, 4.5rem) clamp(3rem, 6vw, 5rem); position: relative; min-height: min(100vh, 760px); }
+
+.logo {
+  font-family: var(--font-head);
+  font-size: clamp(3rem, 11vw, 7.2rem);
+  letter-spacing: .09em;
+  line-height: 1;
+  color: var(--ink);
+  margin: 0 0 .15em;
+  display: flex; align-items: baseline;
+  white-space: nowrap;
+}
+.logo .logo-w {
+  font-family: var(--font-script);
+  font-size: 1.55em;
+  color: var(--teal);
+  letter-spacing: 0;
+  margin-right: .03em;    /* a hair of air so the W doesn't swallow the A, but it still reads as one word */
+  position: relative; top: .1em;
+  z-index: 0;
+}
+.logo .logo-rest { position: relative; z-index: 1; padding-left: .12em; }
+
+.tagline {
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: clamp(1.7rem, 4.6vw, 3.1rem);
+  line-height: 1.12;
+  color: var(--pink);
+  max-width: min(17em, 64vw);
+  margin: 0 0 1.6rem;
+  text-shadow: 0 1px 0 rgba(251, 246, 228, .8);
+}
+.tagline .script { font-size: 1.75em; line-height: .8; padding: 0 .08em; }
+.tagline .line2 { display: block; margin-top: .15em; }
+.hero-cta { display: flex; flex-wrap: wrap; gap: .8rem; }
+
+/* scooter anchored bottom-right */
+.scooter {
+  position: absolute; right: clamp(-1rem, 2vw, 3rem); bottom: clamp(1.2rem, 3.5vw, 3rem);
+  width: clamp(200px, 25vw, 340px);
+  pointer-events: none;
+}
+.scooter-road { position: absolute; left: -22%; right: -22%; bottom: -34%; width: 144%; height: 62%; }
+.scooter-body { position: relative; }
+.scooter-body img { width: 100%; height: auto; position: relative; filter: drop-shadow(0 12px 12px rgba(20, 48, 63, .25)); }
+.scooter-bolt {
+  position: absolute; left: 55%; top: 29.5%; width: 12.5%; height: auto;
+  transform: rotate(7deg) skewY(-4deg);
+  animation: bolt-pulse 2.2s ease-in-out infinite;
+}
+@keyframes bolt-pulse {
+  0%, 100% { filter: drop-shadow(0 0 3px var(--bolt-glow)); opacity: .92; }
+  50%      { filter: drop-shadow(0 0 14px var(--bolt)) drop-shadow(0 0 26px var(--bolt-glow)); opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .scooter-bolt { animation: none; filter: drop-shadow(0 0 8px var(--bolt-glow)); }
+}
+
+/* mobile: text first, scooter shrinks and sits below so it never covers copy */
+@media (max-width: 640px) {
+  .hero-inner { min-height: 0; padding-bottom: 14rem; }
+  .tagline { max-width: 100%; }
+  .logo { font-size: clamp(2.4rem, 13vw, 3.6rem); }
+  .scooter { width: 150px; right: .5rem; bottom: 1.5rem; }
+  .hero-cta .btn { flex: 1 1 100%; }
+}
+
+/* sections */
+.home-section { background: var(--cream); }
+.home-section.alt { background: var(--leaf); }
+.section-title { text-align: center; margin-bottom: 2rem; }
+.section-title .eyebrow { display: block; }
+
+.problem-card { border-top: 6px solid var(--pink); }
+.problem-card h3 { color: var(--plum); }
+.card p, .steps p, .section-title p { font-weight: 500; }
+
+.feature-card .badge { margin-top: .5rem; }
+
+.steps { counter-reset: step; display: grid; gap: 1.25rem; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); list-style: none; padding: 0; margin: 0; }
+.steps li { position: relative; padding: 1.6rem 1.4rem 1.4rem 4.2rem; background: var(--cream); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); }
+.steps li::before {
+  counter-increment: step; content: counter(step);
+  position: absolute; left: 1.1rem; top: 1.2rem;
+  font-family: var(--font-script); font-size: 3rem; line-height: 1; color: var(--plum);
+}
+.steps h3 { margin-bottom: .2em; }
+
+.operators { display: grid; gap: 1.5rem; align-items: center; grid-template-columns: 1.2fr 1fr; }
+@media (max-width: 760px) { .operators { grid-template-columns: 1fr; } }
+.mini-dash { background: var(--ink); color: var(--cream); border-radius: var(--radius); padding: 1.2rem; font-family: var(--font-body-strong); font-size: .9rem; box-shadow: var(--shadow); }
+.mini-dash .bar { height: 10px; border-radius: 5px; background: rgba(255,255,255,.18); overflow: hidden; margin: .25rem 0 .8rem; }
+.mini-dash .bar > span { display: block; height: 100%; background: var(--bolt); }
+
+.ds-card .badge { margin-bottom: .5rem; }
+.ds-card p { font-size: 1rem; }
+
+.stats { background: var(--ink); color: var(--cream); }
+.stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 1.5rem; text-align: center; }
+.stat-num { font-family: var(--font-head); font-size: clamp(2.6rem, 6vw, 4rem); color: var(--bolt); line-height: 1; }
+.stat-label { font-family: var(--font-body-strong); font-size: .95rem; }
