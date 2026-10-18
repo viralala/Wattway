@@ -29,6 +29,7 @@ import authRoutes from './auth.routes';
 import stationRoutes from './station.routes';
 import searchRoutes from './search.routes';
 import indexRoutes from './index.routes';
+import algorithmRoutes from './algorithm.routes';
 import * as metaController from '../controllers/metaController';
 import { asyncHandler } from '../middleware/asyncHandler';
 import { fail } from '../utils/respond';
@@ -44,6 +45,9 @@ router.use('/auth', authRoutes);
 router.use('/stations', stationRoutes);
 router.use('/search', searchRoutes);
 router.use('/index', indexRoutes);
+
+// ─── Algorithm Lab (self-contained, database-free) ──────────────────────────
+router.use('/algorithms', algorithmRoutes);
 
 // ─── Pending modules ────────────────────────────────────────────────────────
 // Replace each line with a real mount when the module lands.
