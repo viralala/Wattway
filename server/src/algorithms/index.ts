@@ -32,3 +32,17 @@ export type { AutocompleteInput, AutocompleteResult } from './autocomplete';
 // export { bfs } from './bfs';           // TODO(routing module)
 // export { dfs } from './dfs';           // TODO(routing module)
 // export { rank } from './rank';         // TODO(routing module)
+
+// Queue & Realtime module (Shreenath)
+export { simulateSchedule, compareSchedules, SCHEDULING_POLICIES, DEMO_JOBS } from './scheduler';
+export type { ChargeJob, ScheduleResult, ScheduleComparison, SchedulingPolicy, TimelineSegment } from './scheduler';
+export {
+  urgencyScore,
+  isUrgent,
+  estimateWaits,
+  buildOperatorReport,
+  mergeWaitingLines,
+  lineOrder,
+  CRITICAL_BATTERY_PCT,
+} from './queueAnalytics';
+export type { WaitingDriver, OperatorReport, MergeResult } from './queueAnalytics';

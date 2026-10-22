@@ -30,6 +30,8 @@ import stationRoutes from './station.routes';
 import searchRoutes from './search.routes';
 import indexRoutes from './index.routes';
 import algorithmRoutes from './algorithm.routes';
+import queueRoutes from './queue.routes';
+import tripRoutes from './trip.routes';
 import * as metaController from '../controllers/metaController';
 import { asyncHandler } from '../middleware/asyncHandler';
 import { fail } from '../utils/respond';
@@ -49,6 +51,10 @@ router.use('/index', indexRoutes);
 // ─── Algorithm Lab (self-contained, database-free) ──────────────────────────
 router.use('/algorithms', algorithmRoutes);
 
+// ─── Shipped: Queue & Realtime module (Shreenath) ───────────────────────────
+router.use('/queue', queueRoutes);
+router.use('/trips', tripRoutes);
+
 // ─── Pending modules ────────────────────────────────────────────────────────
 // Replace each line with a real mount when the module lands.
 
@@ -57,24 +63,6 @@ router.use('/algorithms', algorithmRoutes);
 router.use(
   '/routes',
   pendingRouter('Routing & Pathfinding', ['POST /api/routes/plan — battery-aware Dijkstra']),
-);
-
-// import queueRoutes from './queue.routes';
-// router.use('/queue', queueRoutes);
-router.use(
-  '/queue',
-  pendingRouter('Queue & Realtime', [
-    'POST   /api/queue/:stationId/join',
-    'DELETE /api/queue/:stationId/leave',
-    'GET    /api/queue/:stationId',
-  ]),
-);
-
-// import tripRoutes from './trip.routes';
-// router.use('/trips', tripRoutes);
-router.use(
-  '/trips',
-  pendingRouter('Queue & Realtime', ['GET /api/trips — linked-list trip history']),
 );
 
 /**

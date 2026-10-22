@@ -32,6 +32,28 @@ export type { TrieEntry, TrieStats, TrieSuggestion } from './Trie';
 
 // export { Graph } from './Graph';           // TODO(routing module)
 // export { MinHeap } from './MinHeap';       // TODO(routing module)
-// export { LinkedList } from './LinkedList'; // TODO(graph/history module)
+export {
+  LinkedList,
+  SinglyLinkedList,
+  DoublyLinkedList,
+  CircularLinkedList,
+  ListNode,
+  DListNode,
+  hasCycleFrom,
+  middleFrom,
+  josephus,
+  josephusSurvivorIndex,
+} from './LinkedList'; // Queue & Realtime (Shreenath)
+export type { ForwardNode, JosephusResult } from './LinkedList';
 // export { Stack } from './Stack';           // TODO(traversal module)
-// export { Queue } from './Queue';           // TODO(queue module)
+export { CircularQueue, LinkedQueue, QueueOverflowError } from './Queue'; // Queue & Realtime (Shreenath)
+export type { Queue, CircularQueueOptions } from './Queue';
+
+export {
+  BinaryHeap,
+  MaxPriorityQueue,
+  DoubleEndedPriorityQueue,
+  heapSort,
+} from './PriorityQueue'; // Queue & Realtime (Shreenath)
+export { LeftistHeap, LeftistNode } from './LeftistHeap'; // Queue & Realtime (Shreenath)
+export { BinomialHeap, BinomialNode } from './BinomialHeap'; // Queue & Realtime (Shreenath)

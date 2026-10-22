@@ -317,6 +317,141 @@ endpoint: hammer the index with writes, watch `height` drift above
 
 ---
 
+## Queue — `/api/queue`
+
+Owned by the Queue & Realtime module (Shreenath). The live line is a doubly
+linked list per station with a `userId → node` index; MongoDB `QueueEntry` rows
+are its write-behind log. Every write updates `Station.queueLength` / the port
+board and calls `stationIndex.upsert()`, then pushes socket events.
+
+### `GET /api/queue/:stationId` — public (personalised when signed in)
+
+```json
+{
+  "queue": {
+    "stationId": "…", "stationName": "…",
+    "totalPorts": 2, "freePorts": 0, "usablePorts": 2, "queueLength": 3,
+    "charging": [{ "portIndex": 0, "startedAt": "…", "expectedRemainingMinutes": 22, "you": false }],
+    "waiting":  [{ "position": 1, "joinedAt": "…", "estimatedWaitMinutes": 12, "urgent": true, "you": false }],
+    "middle": { "position": 2, "estimatedWaitMinutes": 30 },
+    "you": { "stationId": "…", "status": "waiting", "position": 3, "carsAhead": 2, "estimatedWaitMinutes": 42, "urgent": false },
+    "updatedAt": "…"
+  }
+}
+```
+
+The public payload carries no user ids. `middle` comes from the fast/slow
+pointer walk; estimates from a min-heap of port-free times.
+
+### `GET /api/queue/:stationId/position` 🔒
+
+`{ you }` — `404` if you are not in this station's line.
+
+### `POST /api/queue/:stationId/join` 🔒 — `{ batteryPct?, emergency?, expectedChargeMinutes? }`
+
+| Field | Rule |
+| --- | --- |
+| `batteryPct` | 0–100. Under 5 counts as **urgent**. |
+| `emergency` | boolean. Emergency vehicles are **urgent**. |
+| `expectedChargeMinutes` | integer 5–240, default 30. Feeds wait estimates. |
+
+Urgent drivers are placed behind earlier urgent drivers and ahead of everyone
+else. If a port is free and nobody is ahead, the driver is assigned it at once.
+
+`201` → `{ entryId, startedCharging, you, queue }`. `409` if already in this line
+or every port is faulted. `422` on a bad body.
+
+### `DELETE /api/queue/:stationId/leave` 🔒
+
+Leaves the line (entry → `cancelled`, **O(1) unlink**), or, if charging, ends the
+session (entry → `completed`, port freed and handed to the head of the line).
+`200` → `{ left: "waiting" | "charging", queue }`. `404` if not in line.
+
+### `GET /api/queue/:stationId/simulate` — job scheduling (Lab 6)
+
+| Query | Default | Meaning |
+| --- | --- | --- |
+| `policy` | `compare` | `fifo` · `priority` · `round-robin` · `compare` (all three) |
+| `source` | `auto` | `live` line, `demo` set, or `auto` (demo when the line is empty) |
+| `quantum` | 15 | round-robin slice, minutes |
+| `ports` | station's usable ports (2 for demo) | override |
+
+Single policy → `{ source, ports, result: { timeline[], jobs[], averageWait, averageTurnaround, maxWait, makespan, interruptions } }`.
+`compare` → `{ source, ports, results: { fifo, priority, round-robin }, lowestAverageWait, urgentAverageWait }`.
+
+### `GET /api/queue/:stationId/report` 🔒 managing operator · admin — `?top=5`
+
+```json
+{
+  "report": {
+    "waiting": 4,
+    "sortedByWait": [ /* heapsort, longest wait first */ ],
+    "heapsort": { "passes": 4, "trace": [[…], …] },
+    "urgentQueue": [ /* max-heap top N */ ],
+    "depq": { "mostUrgent": { … }, "leastUrgent": { … } },
+    "middle": { "position": 2, "estimatedWaitMinutes": 30 },
+    "integrity": { "linkedListConsistent": true, "noCycle": true, "indexMatchesList": true }
+  }
+}
+```
+
+Each driver row: `{ id, userId, name, joinedAt, waitedMinutes, batteryPct, emergency, urgency }`.
+
+### `POST /api/queue/:stationId/allocate` 🔒 managing operator · admin
+
+Hands any free ports to the front of the line — use after freeing a port with
+`PATCH /api/stations/:id/ports/:portIndex`. → `{ started, queue }`.
+
+### `POST /api/queue/:stationId/merge` 🔒 managing operator · admin — `{ targetStationId?, faultPorts? }`
+
+The station's ports have faulted: its waiting line is merged into
+`targetStationId` (or the **nearest active station** when omitted) with a
+**leftist heap**, keeping urgency first and then join time. Drivers already in
+the target's line have their source entry cancelled. `faultPorts: true` also
+marks the source's free ports `faulted`. The operator must manage the target
+too (admins always can).
+
+→ `{ moved, skippedDuplicates, targetDistanceKm, leftistHeap: { targetSize, incomingSize, rightSpineTarget, rightSpineIncoming, rightSpineMerged }, source, target }`
+
+### `GET /api/queue/demo/josephus?n=7&k=3`
+
+→ `{ n, k, eliminationOrder: [3,6,2,7,5,1,4], survivor: 4, recurrenceSurvivor: 4 }` — played on the circular linked list.
+
+---
+
+## Trips — `/api/trips` 🔒
+
+A driver's history as a **most-recent-first singly linked list**:
+`Trip.previousTrip` is the `next` pointer. Only the owner can see a trip.
+
+### `GET /api/trips?limit=20&before=<tripId>`
+
+→ `{ trips, total, nextCursor, chainIntact, middleTripId }`. Pass `nextCursor`
+as `before` for the next page. `chainIntact: false` means some trip was not
+reachable by pointer (it is still returned, spliced in by date).
+
+### `POST /api/trips` — insert at head
+
+```json
+{
+  "origin": { "lat": 18.52, "lng": 73.85 }, "originLabel": "Kothrud",
+  "destination": { "lat": 19.07, "lng": 72.87 }, "destinationLabel": "Andheri",
+  "batteryStartPct": 80,
+  "chargingStop": { "stationId": "…", "estimatedWaitMinutes": 10 },
+  "route": {}, "distanceKm": 150, "estimatedDurationMinutes": 200, "status": "planned"
+}
+```
+
+`201` → `{ trip }` with `previousTrip` set to your previous newest trip. The
+routing module can call `recordTrip()` in `services/tripService.ts` directly.
+
+### `GET /api/trips/:id` · `DELETE /api/trips/:id`
+
+Delete unlinks the node: the newer trip that pointed at it is re-pointed at the
+deleted trip's own `previousTrip`.
+
+---
+
 ## Realtime
 
 Socket.IO on the same origin. Authenticate on the handshake:
@@ -327,8 +462,20 @@ socket.emit('station:watch', stationId);
 ```
 
 Anonymous sockets are allowed — a signed-out visitor still sees live queue
-lengths — they just do not get a private user room. Queue events are owned by
-the Queue & Realtime module; see `server/src/sockets/index.ts`.
+lengths — they just do not get a private user room.
+
+Queue events (Queue & Realtime module, `server/src/sockets/queueHandlers.ts`):
+
+| Direction | Event | Payload | Room |
+| --- | --- | --- | --- |
+| in | `queue:watch` | `(stationId, ack?)` → ack `{ ok, data: snapshot }` | joins `station:<id>` |
+| in | `queue:unwatch` | `(stationId)` | leaves it |
+| in | `queue:position` | `(stationId, ack)` → ack `{ ok, data: you }` (signed in only) | — |
+| out | `queue:updated` | the public queue snapshot | `station:<id>` |
+| out | `ports:updated` | `{ stationId, totalPorts, freePorts, ports[] }` | `station:<id>` |
+| out | `queue:position` | your `you` view, or `{ status: "left", reason }` | `user:<id>` |
+
+Every join / leave / allocate / merge pushes these immediately — no polling.
 
 ---
 
@@ -339,10 +486,6 @@ These answer `501` with `error.details.module` naming the owner.
 | Endpoint | Module | Structures |
 | --- | --- | --- |
 | `POST /api/routes/plan` | Routing & Pathfinding | Graph, Min-Heap |
-| `POST /api/queue/:stationId/join` | Queue & Realtime | Queue |
-| `DELETE /api/queue/:stationId/leave` | Queue & Realtime | Linked List |
-| `GET /api/queue/:stationId` | Queue & Realtime | Queue |
-| `GET /api/trips` | Queue & Realtime | Linked List |
 
 ---
 
