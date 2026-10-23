@@ -10,7 +10,7 @@ export function ScooterHero() {
     <div className="scooter" aria-hidden="true">
       {/* road curve the scooter sits on */}
       <svg className="scooter-road" viewBox="0 0 420 120" preserveAspectRatio="none">
-        <path d="M-10 120 C 60 -10, 360 -10, 430 120 Z" fill="#231f20" />
+        <path d="M-10 120 C 60 -10, 360 -10, 430 120 Z" className="scooter-road-fill" />
         <path
           d="M30 108 C 100 24, 320 24, 390 108"
           fill="none"

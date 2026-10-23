@@ -4,16 +4,20 @@
  */
 import type { AlgorithmId, LabNode } from '../services/algorithms';
 
+/**
+ * `kind` decides how a result is drawn: `search` grows a shaded search tree and
+ * then its route, `mst` grows a thin spanning tree, `tour` is a dashed loop.
+ */
 export const ALGORITHM_META: Record<
   AlgorithmId,
-  { label: string; short: string; color: string; explores: boolean; dashed?: boolean }
+  { label: string; short: string; color: string; kind: 'search' | 'mst' | 'tour'; dashed?: boolean }
 > = {
-  dijkstra: { label: 'Dijkstra', short: 'Dijkstra', color: 'var(--algo-dijkstra)', explores: true },
-  astar: { label: 'A*', short: 'A*', color: 'var(--algo-astar)', explores: true },
-  bellmanFord: { label: 'Bellman-Ford', short: 'Bellman-Ford', color: 'var(--algo-bellman)', explores: true },
-  floydWarshall: { label: 'Floyd-Warshall', short: 'Floyd-W.', color: 'var(--algo-floyd)', explores: false },
-  tspExact: { label: 'TSP · Held-Karp (exact)', short: 'TSP exact', color: 'var(--algo-tsp-exact)', explores: false, dashed: true },
-  tspNearestNeighbour: { label: 'TSP · Nearest neighbour', short: 'TSP nearest', color: 'var(--algo-tsp-nn)', explores: false, dashed: true },
+  dijkstra: { label: 'Dijkstra', short: 'Dijkstra', color: 'var(--algo-dijkstra)', kind: 'search' },
+  astar: { label: 'A*', short: 'A*', color: 'var(--algo-astar)', kind: 'search' },
+  kruskal: { label: 'Kruskal (MST)', short: 'Kruskal', color: 'var(--algo-kruskal)', kind: 'mst' },
+  prim: { label: 'Prim (MST)', short: 'Prim', color: 'var(--algo-prim)', kind: 'mst' },
+  tspExact: { label: 'TSP · Held-Karp (exact)', short: 'TSP exact', color: 'var(--algo-tsp-exact)', kind: 'tour', dashed: true },
+  tspNearestNeighbour: { label: 'TSP · Nearest neighbour', short: 'TSP nearest', color: 'var(--algo-tsp-nn)', kind: 'tour', dashed: true },
 };
 
 export const ALL_ALGORITHMS = Object.keys(ALGORITHM_META) as AlgorithmId[];

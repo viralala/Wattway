@@ -1,11 +1,12 @@
 /* WattWay · Team Kothimbir 🌿 — Route planner */
 
-.rt-layout { display: grid; grid-template-columns: minmax(260px, 300px) minmax(0, 1fr); gap: 1.25rem; align-items: start; }
-@media (max-width: 920px) { .rt-layout { grid-template-columns: 1fr; } }
-.rt-controls { display: grid; gap: 1rem; }
+/* Bands, top to bottom: the three inputs side by side; the answer (summary + map); the full ranking. */
+.rt-controls { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1.25rem; align-items: stretch; }
+@media (max-width: 920px) { .rt-controls { grid-template-columns: minmax(0, 1fr); } }
+.rt-result { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 1.25rem; align-items: start; }
+@media (max-width: 920px) { .rt-result { grid-template-columns: minmax(0, 1fr); } }
 /* minmax(0, 1fr) stops the no-wrap table from widening the column past the page */
-.rt-main { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1.25rem; min-width: 0; }
-.rt-panel { display: grid; gap: .9rem; }
+.rt-panel { display: grid; gap: .9rem; align-content: start; }
 .rt-panel h3 { margin: 0; font-size: 1.35rem; }
 .rt-panel small { font-family: var(--font-body-strong); font-size: .8rem; }
 
@@ -31,7 +32,7 @@
 .rt-summary-top h3 { margin: 0; font-size: 1.45rem; }
 .rt-chosen { display: grid; gap: .75rem; border-top: 1px dashed var(--route); padding-top: .9rem; }
 .rt-chosen h4 { font-family: var(--font-body); font-weight: 700; font-size: 1.35rem; margin: 0; }
-.eyebrow-sm { font-family: var(--font-script); color: var(--plum); font-size: 1.7rem; line-height: 1; margin: 0; }
+.eyebrow-sm { font-family: var(--font-script); color: var(--wine); font-size: 1.7rem; line-height: 1; margin: 0; }
 
 /* ── Map ── */
 .st-dot.rt-a { background: var(--ok); }

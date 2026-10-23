@@ -18,7 +18,7 @@
   font-size: clamp(3rem, 11vw, 7.2rem);
   letter-spacing: .09em;
   line-height: 1;
-  color: var(--ink);
+  color: #141414; /* the hero title is plain black, W included */
   margin: 0 0 .15em;
   display: flex; align-items: baseline;
   white-space: nowrap;
@@ -26,7 +26,7 @@
 .logo .logo-w {
   font-family: var(--font-script);
   font-size: 1.55em;
-  color: var(--teal);
+  color: inherit;
   letter-spacing: 0;
   margin-right: .03em;    /* a hair of air so the W doesn't swallow the A, but it still reads as one word */
   position: relative; top: .1em;
@@ -39,12 +39,12 @@
   font-weight: 700;
   font-size: clamp(1.7rem, 4.6vw, 3.1rem);
   line-height: 1.12;
-  color: var(--pink);
+  color: var(--ink); /* same as the headings below; the script word stays wine */
   max-width: min(17em, 64vw);
   margin: 0 0 1.6rem;
   text-shadow: 0 1px 0 rgba(251, 246, 228, .8);
 }
-.tagline .script { font-size: 1.75em; line-height: .8; padding: 0 .08em; }
+.tagline .script { color: var(--wine); font-size: 1.75em; line-height: .8; padding: 0 .08em; }
 .tagline .line2 { display: block; margin-top: .15em; }
 .hero-cta { display: flex; flex-wrap: wrap; gap: .8rem; }
 
@@ -56,7 +56,9 @@
 }
 .scooter-road { position: absolute; left: -22%; right: -22%; bottom: -34%; width: 144%; height: 62%; }
 .scooter-body { position: relative; }
-.scooter-body img { width: 100%; height: auto; position: relative; filter: drop-shadow(0 12px 12px rgba(20, 48, 63, .25)); }
+/* the watercolour scooter is red; deepen it to wine, keeping its shading */
+.scooter-body img { width: 100%; height: auto; position: relative; filter: hue-rotate(-24deg) saturate(.72) brightness(.72) drop-shadow(0 12px 12px rgba(31, 58, 42, .25)); }
+.scooter-road-fill { fill: var(--ink); }
 .scooter-bolt {
   position: absolute; left: 55%; top: 29.5%; width: 12.5%; height: auto;
   transform: rotate(7deg) skewY(-4deg);
@@ -85,18 +87,31 @@
 .section-title { text-align: center; margin-bottom: 2rem; }
 .section-title .eyebrow { display: block; }
 
-.problem-card { border-top: 6px solid var(--pink); }
-.problem-card h3 { color: var(--plum); }
+/* Boxes take the opposite pastel to their section: water blue on cream, pink on green.
+   A fine edge and a soft offset shadow make them sit up like stickers. */
+.home-section .card, .steps li {
+  background: var(--mist); border: 1.5px solid var(--mist-edge);
+  box-shadow: 4px 4px 0 rgba(46, 84, 53, .14);
+}
+.home-section.alt .card { background: var(--blush); border-color: var(--blush-edge); }
+/* ...and a thick stripe across the top in the other pastel: pink on blue boxes, blue on pink. */
+.home-section .card, .steps li { border-top: 6px solid var(--blush-edge); }
+.home-section.alt .card { border-top-color: var(--mist-edge); }
+.steps h3 { color: var(--forest); }
 .card p, .steps p, .section-title p { font-weight: 500; }
 
 .feature-card .badge { margin-top: .5rem; }
 
-.steps { counter-reset: step; display: grid; gap: 1.25rem; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); list-style: none; padding: 0; margin: 0; }
-.steps li { position: relative; padding: 1.6rem 1.4rem 1.4rem 4.2rem; background: var(--cream); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); }
+/* Not a size container: containment would scope the step counter to each <li>
+   (every step would read "1"), so its columns follow the viewport instead. */
+ol.steps { container-type: normal; counter-reset: step; list-style: none; padding: 0; margin: 0; }
+@media (min-width: 600px) { ol.steps > * { --cols: 2; } }
+@media (min-width: 880px) { ol.steps > * { --cols: 3; } }
+.steps li { position: relative; padding: 1.6rem 1.4rem 1.4rem 4.2rem; border-radius: var(--radius); }
 .steps li::before {
   counter-increment: step; content: counter(step);
   position: absolute; left: 1.1rem; top: 1.2rem;
-  font-family: var(--font-script); font-size: 3rem; line-height: 1; color: var(--plum);
+  font-family: var(--font-script); font-size: 3rem; line-height: 1; color: var(--wine);
 }
 .steps h3 { margin-bottom: .2em; }
 
@@ -110,6 +125,6 @@
 .ds-card p { font-size: 1rem; }
 
 .stats { background: var(--ink); color: var(--cream); }
-.stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 1.5rem; text-align: center; }
+.stats-grid { --gap: 1.5rem; text-align: center; }
 .stat-num { font-family: var(--font-head); font-size: clamp(2.6rem, 6vw, 4rem); color: var(--bolt); line-height: 1; }
 .stat-label { font-family: var(--font-body-strong); font-size: .95rem; }

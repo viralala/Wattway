@@ -18,7 +18,7 @@ p { margin: 0 0 1em; }
 a { color: var(--plum); text-underline-offset: 3px; }
 a:hover { color: var(--red-deep); }
 img { max-width: 100%; display: block; }
-.script { font-family: var(--font-script); font-weight: 400; color: var(--plum); }
+.script { font-family: var(--font-script); font-weight: 400; color: var(--wine); }
 .muted { color: #2f4753; }
 .mono { font-family: ui-monospace, 'Cascadia Code', Consolas, monospace; font-size: .85em; }
 
@@ -37,20 +37,42 @@ img { max-width: 100%; display: block; }
 
 .container { width: min(var(--maxw), 100% - 2 * var(--gutter)); margin-inline: auto; }
 .section { padding-block: clamp(2.5rem, 6vw, 4.5rem); }
-.grid { display: grid; gap: 1.25rem; }
-.grid.cols-2 { grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); }
-.grid.cols-3 { grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); }
-.grid.cols-4 { grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); }
+/* Card grids. Flex-wrap instead of CSS grid so a short last row sits centred
+   rather than hugging the left. Each grid is its own size container, so the
+   column count follows the space it actually has (e.g. beside the Lab sidebar). */
+.grid, .steps, .stats-grid, .db-kpis, .db-stations {
+  --gap: 1.25rem;
+  display: flex; flex-wrap: wrap; justify-content: center; gap: var(--gap);
+  container-type: inline-size;
+}
+:is(.grid, .steps, .stats-grid, .db-kpis, .db-stations) > * {
+  --cols: 1;
+  flex: 0 0 calc((100% - (var(--cols) - 1) * var(--gap)) / var(--cols));
+  min-width: 0;
+}
+@container (min-width: 440px) {
+  :is(.grid.cols-4, .db-kpis) > * { --cols: 2; }
+  .stats-grid > * { --cols: 3; }
+}
+@container (min-width: 540px) { .grid.cols-3 > * { --cols: 2; } }
+@container (min-width: 660px) {
+  .grid.cols-2 > * { --cols: 2; }
+  .db-stations > * { --cols: 2; }
+}
+@container (min-width: 820px) { .grid.cols-3 > * { --cols: 3; } }
+@container (min-width: 880px) { :is(.grid.cols-4, .db-kpis) > * { --cols: 4; } }
+@container (min-width: 1000px) {
+  .db-stations > * { --cols: 3; }
+  /* exactly four cards: 2 + 2 reads better than 3 + 1 */
+  .db-stations:has(> :last-child:nth-child(4)) > * { --cols: 2; }
+}
 .row { display: flex; flex-wrap: wrap; gap: .75rem; align-items: center; }
 .stack > * + * { margin-top: 1rem; }
 
-/* inner pages: faded map backdrop behind a cream panel */
+/* inner pages: a cream base; each page lays alternating green / cream bands over it */
 .page-backdrop {
   min-height: 100vh;
-  padding-bottom: clamp(2.5rem, 6vw, 4rem);
-  background:
-    linear-gradient(rgba(251, 246, 228, 0.82), rgba(230, 240, 207, 0.9)),
-    var(--map-bg) center / cover fixed;
+  background: var(--cream);
 }
 .panel {
   background: var(--cream-glass);
@@ -63,7 +85,7 @@ img { max-width: 100%; display: block; }
 .page-head { padding-block: clamp(1.75rem, 4vw, 3rem) 1rem; }
 .page-head h1 { font-size: clamp(2.2rem, 5vw, 3.4rem); letter-spacing: .03em; margin-bottom: .25em; }
 .page-head p { max-width: 62ch; color: var(--ink); font-family: var(--font-body-strong); font-size: 1.1rem; }
-.eyebrow { font-family: var(--font-script); color: var(--plum); font-size: 2.9rem; line-height: 1.05; margin-bottom: .1em; }
+.eyebrow { font-family: var(--font-script); color: var(--wine); font-size: 2.9rem; line-height: 1.05; margin-bottom: .1em; }
 
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }

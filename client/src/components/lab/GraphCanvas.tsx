@@ -1,8 +1,8 @@
 /**
  * WattWay · Team Kothimbir 🌿
- * GraphCanvas.tsx — the Lab's road map: roads, the nodes each algorithm has
- * explored so far, each algorithm's final path in its own colour, and the
- * start / end / tour-stop markers. Click a node to pick it.
+ * GraphCanvas.tsx — the Lab's road map: roads, each search's growing search
+ * tree (shaded roads), each spanning tree, each algorithm's final route in its
+ * own colour, and the start / end / tour-stop markers. Click a node to pick it.
  */
 import { useMemo, useRef } from 'react';
 import type { AlgorithmId, AlgorithmResult, CostMode, LabGraphData, LabNode } from '../../services/algorithms';
@@ -12,9 +12,9 @@ interface Props {
   graph: LabGraphData;
   results: AlgorithmResult[];
   visible: Set<AlgorithmId>;
-  /** Algorithms whose explored nodes are drawn. */
-  explore: Set<AlgorithmId>;
-  /** How many explored nodes to show per algorithm right now (Infinity = all). */
+  /** Algorithms whose tree is drawn growing (searches) or animated (spanning trees). */
+  animate: Set<AlgorithmId>;
+  /** How many tree roads to show per algorithm right now (Infinity = all). */
   progress: number;
   mode: CostMode;
   startId: string;
@@ -38,7 +38,7 @@ export function GraphCanvas({
   graph,
   results,
   visible,
-  explore,
+  animate,
   progress,
   mode,
   startId,
@@ -61,14 +61,18 @@ export function GraphCanvas({
     if (hit) onPick(hit);
   };
 
-  const exploring = results.filter((r) => visible.has(r.algorithm) && explore.has(r.algorithm));
+  const shown = (r: AlgorithmResult): number =>
+    animate.has(r.algorithm) ? revealedCount(r.treeEdges.length, progress) : r.treeEdges.length;
+  const searching = results.filter(
+    (r) => visible.has(r.algorithm) && animate.has(r.algorithm) && ALGORITHM_META[r.algorithm].kind === 'search',
+  );
+  const spanning = results.filter((r) => visible.has(r.algorithm) && ALGORITHM_META[r.algorithm].kind === 'mst');
   const drawable = results.filter((r) => visible.has(r.algorithm) && r.path.length > 1);
-  const pathReady = (r: AlgorithmResult): boolean =>
-    !explore.has(r.algorithm) || revealedCount(r.visitedOrder.length, progress) >= r.visitedOrder.length;
+  const pathReady = (r: AlgorithmResult): boolean => shown(r) >= r.treeEdges.length;
 
   // Tours underneath; shortest-path algorithms on top, nudged apart so identical routes stay visible.
-  const tourPaths = drawable.filter((r) => ALGORITHM_META[r.algorithm].dashed);
-  const roadPaths = drawable.filter((r) => !ALGORITHM_META[r.algorithm].dashed);
+  const tourPaths = drawable.filter((r) => ALGORITHM_META[r.algorithm].kind === 'tour');
+  const roadPaths = drawable.filter((r) => ALGORITHM_META[r.algorithm].kind === 'search');
 
   const line = (ids: string[], offset = 0): string =>
     offsetPolyline(
@@ -108,21 +112,26 @@ export function GraphCanvas({
         })}
       </g>
 
-      {/* explored nodes — biggest ring first so smaller ones stay visible on top */}
-      {[...exploring]
-          .sort((p, q) => q.visitedOrder.length - p.visitedOrder.length)
-          .map((r, layer) => {
-            const count = revealedCount(r.visitedOrder.length, progress);
-            const meta = ALGORITHM_META[r.algorithm];
-            return (
-              <g key={`explore-${r.algorithm}`} style={{ fill: meta.color, stroke: meta.color }} fillOpacity={0.28} strokeOpacity={0.7} strokeWidth={0.1}>
-                {r.visitedOrder.slice(0, count).map((id) => {
-                  const n = byId.get(id);
-                  return n ? <circle key={id} cx={n.x} cy={n.y} r={nodeR * (2.6 - layer * 0.45)} /> : null;
-                })}
-              </g>
-            );
-          })}
+      {/* search trees: the roads each search has travelled so far, as a soft shaded band —
+          the bigger search underneath so the narrower one stays readable on top */}
+      {[...searching]
+        .sort((p, q) => q.treeEdges.length - p.treeEdges.length)
+        .map((r) => (
+          <g key={`search-${r.algorithm}`} className="lab-search" style={{ stroke: ALGORITHM_META[r.algorithm].color }}>
+            {r.treeEdges.slice(0, shown(r)).map(([from, to]) => (
+              <polyline key={`${from}-${to}`} points={line([from, to])} />
+            ))}
+          </g>
+        ))}
+
+      {/* spanning trees: thin lines, nudged apart because Kruskal and Prim find the same tree */}
+      {spanning.map((r) => (
+        <g key={`mst-${r.algorithm}`} className="lab-mst" style={{ stroke: ALGORITHM_META[r.algorithm].color }}>
+          {r.treeEdges.slice(0, shown(r)).map(([from, to]) => (
+            <polyline key={`${from}-${to}`} points={line([from, to], r.algorithm === 'kruskal' ? -0.11 : 0.11)} />
+          ))}
+        </g>
+      ))}
 
       {/* nodes */}
       <g>

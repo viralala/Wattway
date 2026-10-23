@@ -8,7 +8,6 @@ import { Layout } from './components/Layout';
 import Home from './pages/Home';
 import ComingSoon from './pages/ComingSoon';
 import AlgorithmLab from './pages/AlgorithmLab';
-import DataStructures from './pages/DataStructures';
 import Stations from './pages/Stations';
 import RoutePlanner from './pages/RoutePlanner';
 import Queue from './pages/Queue';
@@ -26,7 +25,6 @@ export default function App() {
         <Route path="queue" element={<Queue />} />
         <Route path="dashboard" element={<Dashboard />} />
         <Route path="lab" element={<AlgorithmLab />} />
-        <Route path="data-structures" element={<DataStructures />} />
         <Route path="*" element={<ComingSoon title="Lost on the map" blurb="That page doesn’t exist." />} />
       </Route>
     </Routes>

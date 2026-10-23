@@ -154,136 +154,140 @@ export default function Stations() {
   const freeNow = results.filter((s) => s.freePorts > 0).length;
 
   return (
-    <div className="container">
-      <PageHead eyebrow="find a plug" title="Station map">
-        Every station around Pune with its free ports, price, connectors and the queue waiting for it. Pick a pin or a
-        card to open the station’s port board.
-      </PageHead>
+    <div className="container page-stations">
+      <div className="band green">
+        <PageHead eyebrow="find a plug" title="Station map">
+          Every station around Pune with its free ports, price, connectors and the queue waiting for it. Pick a pin or a
+          card to open the station’s port board.
+        </PageHead>
 
-      <p className="notice st-sample" role="note">
-        Sample data: 15 fictional stations at real Pune localities. Live numbers arrive once the stations API is
-        connected.
-      </p>
+        <p className="notice st-sample" role="note">
+          Sample data: 15 fictional stations at real Pune localities. Live numbers arrive once the stations API is
+          connected.
+        </p>
 
-      <section className="card st-filters" aria-label="Filter stations">
-        <div className="field">
-          <label htmlFor="st-text">Search</label>
-          <input
-            id="st-text"
-            className="input"
-            type="search"
-            placeholder="Name or locality"
-            value={filters.text}
-            onChange={(e) => set('text', e.target.value)}
-          />
-        </div>
-        <div className="field">
-          <label htmlFor="st-connector">Connector</label>
-          <select
-            id="st-connector"
-            className="select"
-            value={filters.connector}
-            onChange={(e) => set('connector', e.target.value as StationFilters['connector'])}
-          >
-            <option value="any">Any connector</option>
-            {connectors.map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="field">
-          <label htmlFor="st-sort">Sort</label>
-          <select
-            id="st-sort"
-            className="select"
-            value={filters.sort}
-            onChange={(e) => set('sort', e.target.value as SortKey)}
-          >
-            {(Object.keys(SORT_LABELS) as SortKey[]).map((k) => (
-              <option key={k} value={k}>
-                {SORT_LABELS[k]}
-              </option>
-            ))}
-          </select>
-        </div>
-        <Slider
-          id="st-price"
-          label="Max price"
-          value={filters.maxPrice}
-          min={10}
-          max={25}
-          step={0.5}
-          format={(v) => `₹${v}/kWh`}
-          onChange={(v) => set('maxPrice', v)}
-        />
-        <div className="st-filter-end">
-          <label className="check">
-            <input type="checkbox" checked={filters.freeOnly} onChange={(e) => set('freeOnly', e.target.checked)} />
-            Free port right now
-          </label>
-          <button className="btn btn-ghost btn-sm" onClick={() => setFilters(DEFAULT_FILTERS)}>
-            Reset
-          </button>
-        </div>
-      </section>
-
-      <p className="st-count" role="status" aria-live="polite">
-        {all === null
-          ? 'Loading stations…'
-          : `${results.length} of ${all.length} stations · ${freeNow} with a free port now`}
-      </p>
-
-      <div className="st-layout">
-        <div className="st-map-col">
-          <div className="card st-map-card">
-            <ul className="st-legend" aria-label="Map legend">
-              <li>
-                <span className="st-dot available" /> Free port now
-              </li>
-              <li>
-                <span className="st-dot full" /> All busy, queue open
-              </li>
-              <li>
-                <span className="st-dot offline" /> Offline
-              </li>
-              <li>
-                <span className="st-dot home" /> You
-              </li>
-            </ul>
-            <StationMap stations={mapStations}selectedId={selectedId} onSelect={(id) => select(id)} />
+        <section className="card st-filters" aria-label="Filter stations">
+          <div className="field">
+            <label htmlFor="st-text">Search</label>
+            <input
+              id="st-text"
+              className="input"
+              type="search"
+              placeholder="Name or locality"
+              value={filters.text}
+              onChange={(e) => set('text', e.target.value)}
+            />
           </div>
-          {selected && <StationDetail s={selected} onClose={() => select(null)} />}
-        </div>
+          <div className="field">
+            <label htmlFor="st-connector">Connector</label>
+            <select
+              id="st-connector"
+              className="select"
+              value={filters.connector}
+              onChange={(e) => set('connector', e.target.value as StationFilters['connector'])}
+            >
+              <option value="any">Any connector</option>
+              {connectors.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="field">
+            <label htmlFor="st-sort">Sort</label>
+            <select
+              id="st-sort"
+              className="select"
+              value={filters.sort}
+              onChange={(e) => set('sort', e.target.value as SortKey)}
+            >
+              {(Object.keys(SORT_LABELS) as SortKey[]).map((k) => (
+                <option key={k} value={k}>
+                  {SORT_LABELS[k]}
+                </option>
+              ))}
+            </select>
+          </div>
+          <Slider
+            id="st-price"
+            label="Max price"
+            value={filters.maxPrice}
+            min={10}
+            max={25}
+            step={0.5}
+            format={(v) => `₹${v}/kWh`}
+            onChange={(v) => set('maxPrice', v)}
+          />
+          <div className="st-filter-end">
+            <label className="check">
+              <input type="checkbox" checked={filters.freeOnly} onChange={(e) => set('freeOnly', e.target.checked)} />
+              Free port right now
+            </label>
+            <button className="btn btn-ghost btn-sm" onClick={() => setFilters(DEFAULT_FILTERS)}>
+              Reset
+            </button>
+          </div>
+        </section>
+      </div>
 
-        <ol className="st-list" aria-label="Stations">
-          {results.map((s) => (
-            <li key={s.id}>
-              <button
-                className={`st-item${s.id === selectedId ? ' selected' : ''}`}
-                aria-pressed={s.id === selectedId}
-                onClick={() => select(s.id)}
-              >
-                <span className="st-item-top">
-                  <strong>{s.name}</strong>
-                  <StatusBadge s={s} />
-                </span>
-                <span className="st-item-meta">
-                  {s.distanceKm.toFixed(1)} km · ₹{s.pricePerKwh}/kWh · ★ {s.rating.toFixed(1)}
-                </span>
-                <span className="st-item-meta">
-                  {s.freePorts}/{s.totalPorts} ports free ·{' '}
-                  {s.queueLength > 0 ? `${s.queueLength} in queue · ${formatWait(s.waitMin)}` : formatWait(s.waitMin)}
-                </span>
-                <span className="st-item-conn">{s.connectorTypes.join(' · ')}</span>
-              </button>
-            </li>
-          ))}
-          {all !== null && results.length === 0 && (
-            <li className="card muted">No station matches those filters. Try raising the price limit or resetting.</li>
-          )}
-        </ol>
+      <div className="band cream">
+        <p className="st-count" role="status" aria-live="polite">
+          {all === null
+            ? 'Loading stations…'
+            : `${results.length} of ${all.length} stations · ${freeNow} with a free port now`}
+        </p>
+
+        <div className="st-layout">
+          <div className="st-map-col">
+            <div className="card st-map-card">
+              <ul className="st-legend" aria-label="Map legend">
+                <li>
+                  <span className="st-dot available" /> Free port now
+                </li>
+                <li>
+                  <span className="st-dot full" /> All busy, queue open
+                </li>
+                <li>
+                  <span className="st-dot offline" /> Offline
+                </li>
+                <li>
+                  <span className="st-dot home" /> You
+                </li>
+              </ul>
+              <StationMap stations={mapStations}selectedId={selectedId} onSelect={(id) => select(id)} />
+            </div>
+            {selected && <StationDetail s={selected} onClose={() => select(null)} />}
+          </div>
+
+          <ol className="st-list" aria-label="Stations">
+            {results.map((s) => (
+              <li key={s.id}>
+                <button
+                  className={`st-item${s.id === selectedId ? ' selected' : ''}`}
+                  aria-pressed={s.id === selectedId}
+                  onClick={() => select(s.id)}
+                >
+                  <span className="st-item-top">
+                    <strong>{s.name}</strong>
+                    <StatusBadge s={s} />
+                  </span>
+                  <span className="st-item-meta">
+                    {s.distanceKm.toFixed(1)} km · ₹{s.pricePerKwh}/kWh · ★ {s.rating.toFixed(1)}
+                  </span>
+                  <span className="st-item-meta">
+                    {s.freePorts}/{s.totalPorts} ports free ·{' '}
+                    {s.queueLength > 0 ? `${s.queueLength} in queue · ${formatWait(s.waitMin)}` : formatWait(s.waitMin)}
+                  </span>
+                  <span className="st-item-conn">{s.connectorTypes.join(' · ')}</span>
+                </button>
+              </li>
+            ))}
+            {all !== null && results.length === 0 && (
+              <li className="card muted">No station matches those filters. Try raising the price limit or resetting.</li>
+            )}
+          </ol>
+        </div>
       </div>
     </div>
   );

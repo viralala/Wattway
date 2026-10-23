@@ -9,10 +9,10 @@
 }
 .btn:hover { transform: translateY(-2px); }
 .btn:disabled { opacity: .55; cursor: not-allowed; transform: none; }
-.btn-primary { background: var(--red); color: #fff; box-shadow: 0 8px 18px -8px rgba(217, 58, 43, .8); }
-.btn-primary:hover { background: var(--red-deep); color: #fff; }
-.btn-secondary { background: var(--cream); color: var(--ink); border-color: var(--ink); }
-.btn-secondary:hover { background: var(--ink); color: var(--cream); }
+.btn-primary { background: var(--wine); color: #fff; box-shadow: 0 8px 18px -8px rgba(122, 46, 68, .7); }
+.btn-primary:hover { background: #5f2234; color: #fff; }
+.btn-secondary { background: var(--blush); color: var(--ink); border-color: var(--blush-edge); }
+.btn-secondary:hover { background: var(--blush-edge); color: var(--ink); }
 .btn-ghost { background: transparent; color: var(--plum); border-color: var(--plum); }
 .btn-ghost:hover { background: var(--plum); color: #fff; }
 .btn-sm { padding: .45rem .95rem; min-height: 36px; font-size: .9rem; }
@@ -22,11 +22,17 @@
   background: var(--cream); border: 1px solid var(--line); border-radius: var(--radius);
   padding: 1.4rem; box-shadow: var(--shadow); position: relative;
 }
-.card h3 { margin-bottom: .35em; }
+.card h3 { margin-bottom: .35em; color: var(--forest); }
 .card p:last-child { margin-bottom: 0; }
 .card-icon { font-size: 2rem; line-height: 1; margin-bottom: .5rem; }
-a.card { display: block; color: inherit; text-decoration: none; transition: transform .15s ease; }
-a.card:hover { transform: translateY(-3px); color: inherit; }
+a.card { display: block; color: inherit; text-decoration: none; }
+a.card:hover { color: inherit; }
+/* Hover lift for text boxes: the homepage cards and steps, the Lab's algorithm cards and the
+   dashboard's stat cards. */
+a.card, .home-section .card, .steps li, .algo-card, .db-kpi { transition: transform .2s ease, box-shadow .2s ease; }
+a.card:hover, .home-section .card:hover, .steps li:hover, .algo-card:hover, .db-kpi:hover {
+  transform: translateY(-5px); box-shadow: 0 14px 28px rgba(31, 58, 42, .16);
+}
 .badge {
   display: inline-block; font-family: var(--font-body-strong); font-size: .75rem; font-weight: 600;
   padding: .15rem .6rem; border-radius: 999px; background: var(--leaf-deep); color: var(--ink);
@@ -88,8 +94,10 @@ a.card:hover { transform: translateY(-3px); color: inherit; }
 /* ── Nav ─────────────────────────────────────────────── */
 .nav { position: sticky; top: 0; z-index: 50; background: rgba(251, 246, 228, .92); backdrop-filter: blur(6px); border-bottom: 1px dashed var(--route); }
 .nav-inner { display: flex; align-items: center; justify-content: space-between; gap: 1rem; min-height: 64px; }
-.nav-brand { font-family: var(--font-head); font-size: 1.6rem; letter-spacing: .12em; color: var(--ink); text-decoration: none; display: flex; align-items: baseline; }
-.nav-brand .script { font-size: 2rem; margin-right: .1em; color: var(--teal); letter-spacing: 0; }
+/* The script W's swash spills outside its text box, and clicks only land inside the box.
+   Padding grows the link to cover the whole glyph; the negative margin keeps it in place. */
+.nav-brand { font-family: var(--font-head); font-size: 1.6rem; letter-spacing: .12em; color: var(--ink); text-decoration: none; display: flex; align-items: baseline; padding: .35rem .5rem; margin: -.35rem -.5rem; }
+.nav-brand .script { display: inline-block; padding-inline: .2em; margin-inline: -.2em .1em; font-size: 2rem; color: var(--teal); letter-spacing: 0; }
 .nav-links { display: flex; gap: .25rem; list-style: none; margin: 0; padding: 0; flex-wrap: wrap; }
 .nav-links a {
   -webkit-text-stroke: 0; display: block; padding: .5rem .8rem; border-radius: 999px; text-decoration: none; color: var(--ink);
@@ -105,30 +113,67 @@ a.card:hover { transform: translateY(-3px); color: inherit; }
 }
 
 /* ── Footer ──────────────────────────────────────────── */
-.footer { background: var(--ink); color: var(--cream); padding-block: 2rem; font-family: var(--font-body-strong); font-size: .95rem; }
-.footer a { color: var(--bolt); }
-.footer .row { justify-content: space-between; }
+.footer { background: var(--ink); color: var(--cream); padding-block: .7rem; font-family: var(--font-body-strong); font-size: .85rem; text-align: center; letter-spacing: .04em; }
 
 /* ── Notices ─────────────────────────────────────────── */
 .notice { padding: .8rem 1rem; border-radius: var(--radius-sm); border: 1px solid var(--line); background: #fff8e1; font-family: var(--font-body-strong); font-size: .92rem; }
 .notice.error { background: #fde8e5; border-color: #e7a59d; }
 
-/* ── Data Structures ─────────────────────────────────── */
-.ds-section { margin: 2.5rem 0; }
-.ds-section h2 { font-size: 1.8rem; margin-bottom: 1.2rem; }
-.ds-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 1.25rem; }
 .ds-card { display: grid; gap: 1rem; }
 .ds-card { align-content: start; }
-.ds-card-top { display: flex; justify-content: space-between; align-items: baseline; gap: .75rem; }
-.ds-card h3 { font-size: 1.45rem; color: var(--ink); margin: 0; }
-.ds-card.pending { background: rgba(255, 252, 244, .8); border-style: dashed; }
-.ds-list { margin: 0; padding-left: 1.2rem; display: grid; gap: .5rem; }
-.ds-card code, .ds-section .card code { overflow-wrap: anywhere; }
-.ds-meta { display: grid; gap: .5rem; font-size: .95rem; line-height: 1.5; }
-.ds-meta .label { font-family: var(--font-body-strong); font-weight: 600; color: var(--ink); }
-.ds-meta code { background: rgba(0,0,0,.04); padding: .15rem .4rem; border-radius: 3px; font-size: .9em; }
-.ds-why { font-size: .95rem; line-height: 1.6; color: var(--ink); }
-.ds-complexity { width: 100%; font-size: .9rem; border-collapse: collapse; }
-.ds-complexity th, .ds-complexity td { padding: .4rem .6rem; text-align: left; border-bottom: 1px solid var(--line); }
-.ds-complexity th { font-family: var(--font-body-strong); font-weight: 600; background: rgba(212, 86, 107, .08); }
-.ds-complexity td.mono { font-family: ui-monospace, Consolas, monospace; font-weight: 600; color: var(--plum); }
+
+/* ── Marquee (scrolling text banner) ─────────────────── */
+.marquee {
+  overflow: hidden; padding-block: .85rem;
+  font-family: var(--font-body-strong); font-weight: 700; font-size: clamp(.95rem, 1.6vw, 1.15rem);
+  text-transform: uppercase; letter-spacing: .14em; white-space: nowrap; color: var(--ink);
+}
+.marquee.clear { background: transparent; border-block: 1px dashed var(--route); }
+.marquee.light { background: rgba(159, 202, 208, .28); }
+.marquee-track { display: flex; width: max-content; animation: marquee-scroll var(--loop, 120s) linear infinite; }
+.marquee.reverse .marquee-track { animation-direction: reverse; }
+.marquee:hover .marquee-track { animation-play-state: paused; }
+.marquee-copy { display: flex; flex: none; list-style: none; margin: 0; padding: 0; }
+.marquee-copy li { display: flex; align-items: center; }
+.marquee-bolt { width: .7em; height: 1.05em; margin-inline: 1.6em; flex: none; fill: var(--red); }
+/* Slide by exactly one copy (half the track), then loop back seamlessly. */
+@keyframes marquee-scroll { to { transform: translateX(-50%); } }
+
+/* ── Bands and boxes on every inner page (mirrors the Home page) ───
+   Pages alternate full-width light green and cream bands, like Home's sections, and every box
+   takes the opposite pastel to its band (blue on cream, pink on green) with the other pastel as
+   its top stripe. All boxes get a fine edge and a soft offset "sticker" shadow. */
+.band {
+  --band: var(--cream);
+  padding-block: clamp(1.25rem, 3.5vw, 2.25rem);
+  /* paint the band edge to edge although it sits inside .container */
+  background: var(--band); box-shadow: 0 0 0 100vmax var(--band); clip-path: inset(0 -100vmax);
+}
+.band:first-child { padding-top: 0; }
+.band:last-child { padding-bottom: clamp(2.5rem, 6vw, 4rem); }
+.band.green { --band: var(--leaf); }
+
+.panel, .card { border: 1.5px solid rgba(46, 84, 53, .16); box-shadow: 4px 4px 0 rgba(46, 84, 53, .12); }
+.card { background: var(--cream); }
+
+.band.cream :is(.card, .panel, .notice:not(.error), .st-item) {
+  background: var(--mist); border: 1.5px solid var(--mist-edge); border-top: 6px solid var(--blush-edge);
+}
+.band.green :is(.card, .panel, .notice:not(.error), .st-item) {
+  background: var(--blush); border: 1.5px solid var(--blush-edge); border-top: 6px solid var(--mist-edge);
+}
+
+/* Small boxes inside a box take the other pastel again. */
+.tradeoff, .q-node { background: var(--blush); border: 1.5px solid var(--blush-edge); border-top: 4px solid var(--mist-edge); }
+.q-node.you { background: #fff; border-color: var(--wine); border-top-color: var(--wine); }
+
+/* Per-page picks: the queue's your-place card is pink; the station map itself is painted pink. */
+.band.cream .card.q-you { background: var(--blush); border: 1.5px solid var(--blush-edge); border-top: 6px solid var(--mist-edge); }
+/* the queue card's state colours carry meaning, so they still win */
+.band.cream .card.q-you.waiting { border: 2px solid var(--wine); border-top-width: 6px; }
+.band.cream .card.q-you.called, .band.cream .card.q-you.charging { border: 2px solid var(--ok); border-top-width: 6px; }
+.band.cream .card.q-you.called { background: #eef8f0; }
+.band.cream .st-item:hover { border-color: var(--wine); border-top-color: var(--blush-edge); }
+.band.cream .st-item.selected { background: #f1f9fa; border: 2px solid var(--wine); border-top: 6px solid var(--wine); }
+.page-stations .st-map { background: var(--blush); }
+.page-stations .st-map-bg { fill: #fbe1e7; }

@@ -5,7 +5,7 @@
 .db-message { min-height: 1.5em; margin: .75rem 0; font-weight: 600; color: var(--plum); }
 
 /* ── KPIs ── */
-.db-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 210px), 1fr)); gap: 1rem; }
+.db-kpis { --gap: 1rem; }
 .db-kpi { display: grid; gap: .15rem; padding: 1.1rem 1.2rem; }
 .db-kpi-label { font-size: .78rem; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-soft); font-weight: 600; }
 .db-kpi-value { font-family: var(--font-body); font-weight: 700; font-size: 2.4rem; line-height: 1.05; color: var(--ink); font-variant-numeric: lining-nums tabular-nums; }
@@ -39,7 +39,7 @@
 /* ── Stations ── */
 .db-section { margin-top: 2rem; }
 .db-section h2 { font-size: clamp(1.6rem, 3vw, 2rem); }
-.db-stations { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 330px), 1fr)); gap: 1.25rem; align-items: start; }
+.db-stations { align-items: start; }
 .db-station { display: grid; gap: .6rem; }
 .db-station-top { display: flex; justify-content: space-between; align-items: baseline; gap: .75rem; }
 .db-station h3 { font-size: 1.3rem; margin: 0; }
@@ -70,7 +70,7 @@
 
 /* ── Floyd–Warshall table ── */
 .db-fw-intro { max-width: 75ch; font-size: .95rem; }
-.db-fw { border-collapse: collapse; font-size: .8rem; font-variant-numeric: tabular-nums; }
+.db-fw { margin-inline: auto; border-collapse: collapse;font-size: .8rem; font-variant-numeric: tabular-nums; }
 .db-fw th { padding: .3rem .35rem; font-weight: 700; color: var(--ink-soft); background: #fffdf5; position: sticky; top: 0; }
 .db-fw tbody th { position: sticky; left: 0; text-align: right; }
 .db-fw th.mine { color: var(--plum); background: #f8eaf0; }
