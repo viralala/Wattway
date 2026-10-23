@@ -7,18 +7,31 @@
   background: var(--map-bg) center / cover;
   isolation: isolate;
 }
-.hero::before { /* keeps the tagline legible over the busiest part of the map */
+.hero::before {
   content: ''; position: absolute; inset: 0; z-index: -1;
-  background: radial-gradient(ellipse at 30% 40%, rgba(251, 246, 228, .55), transparent 65%);
+  background:
+    linear-gradient(to bottom, transparent 72%, rgba(251, 246, 228, .9)), /* melts into the cream below */
+    radial-gradient(circle at 84% 74%, rgba(248, 213, 220, .8), transparent 30%), /* pink glow behind the scooter */
+    radial-gradient(ellipse at 30% 40%, rgba(251, 246, 228, .55), transparent 65%), /* keeps the tagline legible */
+    /* soft pink and butter-yellow washes, like extra paint blooms on the map */
+    radial-gradient(ellipse 38% 46% at 70% 14%, rgba(244, 184, 200, .78), transparent 72%),
+    radial-gradient(ellipse 34% 40% at 6% 84%, rgba(244, 184, 200, .72), transparent 72%),
+    radial-gradient(ellipse 22% 30% at 98% 92%, rgba(244, 184, 200, .6), transparent 72%),
+    radial-gradient(ellipse 32% 38% at 46% 78%, rgba(250, 228, 150, .78), transparent 72%),
+    radial-gradient(ellipse 28% 34% at 96% 40%, rgba(250, 228, 150, .7), transparent 72%),
+    radial-gradient(ellipse 26% 30% at 2% 20%, rgba(250, 228, 150, .65), transparent 72%);
 }
 .hero-inner { padding-block: clamp(2rem, 6vw, 4.5rem) clamp(3rem, 6vw, 5rem); position: relative; min-height: min(100vh, 760px); }
 
 .logo {
   font-family: var(--font-head);
   font-size: clamp(3rem, 11vw, 7.2rem);
-  letter-spacing: .09em;
+  letter-spacing: .07em;
   line-height: 1;
   color: #141414; /* the hero title is plain black, W included */
+  /* a soft pink offset shadow lifts it off the map like a sticker (the boxes' look); the cream
+     halo keeps the thin strokes crisp over the paint washes */
+  text-shadow: .045em .045em 0 var(--blush-edge), 0 0 .25em rgba(251, 246, 228, .9);
   margin: 0 0 .15em;
   display: flex; align-items: baseline;
   white-space: nowrap;
@@ -39,7 +52,7 @@
   font-weight: 700;
   font-size: clamp(1.7rem, 4.6vw, 3.1rem);
   line-height: 1.12;
-  color: var(--ink); /* same as the headings below; the script word stays wine */
+  color: var(--ink); /* the same dark green as the headings below; the script word stays wine */
   max-width: min(17em, 64vw);
   margin: 0 0 1.6rem;
   text-shadow: 0 1px 0 rgba(251, 246, 228, .8);
@@ -56,9 +69,9 @@
 }
 .scooter-road { position: absolute; left: -22%; right: -22%; bottom: -34%; width: 144%; height: 62%; }
 .scooter-body { position: relative; }
-/* the watercolour scooter is red; deepen it to wine, keeping its shading */
-.scooter-body img { width: 100%; height: auto; position: relative; filter: hue-rotate(-24deg) saturate(.72) brightness(.72) drop-shadow(0 12px 12px rgba(31, 58, 42, .25)); }
-.scooter-road-fill { fill: var(--ink); }
+/* the watercolour scooter is red; turn it a dusty powder blue, close to the blue boxes below */
+.scooter-body img { width: 100%; height: auto; position: relative; filter: hue-rotate(195deg) saturate(.48) brightness(1.02) drop-shadow(0 12px 12px rgba(31, 58, 42, .25)); }
+.scooter-road-fill { fill: var(--wine); }
 .scooter-bolt {
   position: absolute; left: 55%; top: 29.5%; width: 12.5%; height: auto;
   transform: rotate(7deg) skewY(-4deg);
