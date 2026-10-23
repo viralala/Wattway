@@ -29,9 +29,13 @@
   letter-spacing: .07em;
   line-height: 1;
   color: #141414; /* the hero title is plain black, W included */
-  /* a soft blue offset shadow lifts it off the map like a sticker (the boxes' look); the cream
-     halo keeps the thin strokes crisp over the paint washes */
-  text-shadow: .045em .045em 0 #4f8996, 0 0 .25em rgba(251, 246, 228, .9);
+  /* A blue offset shadow lifts it off the map like a sticker (the boxes' look). It is built from
+     small stacked steps so it stays joined to the thin strokes instead of floating beside them,
+     like an extruded edge. The cream halo keeps the letters crisp over the paint washes. */
+  text-shadow:
+    .008em .008em 0 #4f8996, .016em .016em 0 #4f8996, .024em .024em 0 #4f8996,
+    .032em .032em 0 #4f8996, .04em .04em 0 #4f8996, .048em .048em 0 #4f8996,
+    0 0 .25em rgba(251, 246, 228, .9);
   margin: 0 0 .15em;
   display: flex; align-items: baseline;
   white-space: nowrap;
