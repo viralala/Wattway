@@ -1,7 +1,10 @@
 /**
  * WattWay · Team Kothimbir 🌿
  * ---------------------------------------------------------------------------
- * lab/pathfinding.ts — Dijkstra, A*, Bellman-Ford and Floyd-Warshall, each
+ * lab/pathfinding.ts — Dijkstra and A* (the Lab's two shortest-path entries),
+ * plus Bellman-Ford and Floyd-Warshall as behind-the-scenes helpers: Bellman-Ford
+ * is the yardstick that judges "optimal" (it stays correct on the negative edges
+ * of energy mode), and the Floyd-Warshall matrix feeds the TSP solvers. Each is
  * instrumented to report what it did, not just what it found.
  *
  * Every function returns the same raw shape (`PathRun`): the path, its cost, the
@@ -25,6 +28,8 @@ export interface PathRun {
   cost: number | null;
   /** Node indices in exploration order. */
   visited: number[];
+  /** Dijkstra / A*: [parent, node] for each settled node, in settling order — the search tree. */
+  tree?: Array<[number, number]>;
   operations: number;
   notes: string[];
   negativeCycle?: boolean;
@@ -97,6 +102,7 @@ function bestFirst(
   const previous = new Int32Array(n).fill(-1);
   const settled = new Uint8Array(n);
   const visited: number[] = [];
+  const tree: Array<[number, number]> = [];
   const heap = new LabMinHeap<number>();
   let operations = 0;
   const notes: string[] = [];
@@ -110,6 +116,7 @@ function bestFirst(
     if (settled[u]) continue; // stale entry from an earlier, worse push
     settled[u] = 1;
     visited.push(u);
+    if (previous[u] !== -1) tree.push([previous[u], u]);
     if (u === end) break;
 
     for (const arc of graph.adjacency[u]) {
@@ -132,6 +139,7 @@ function bestFirst(
     path: reachable ? rebuildPath(previous, start, end) : [],
     cost: reachable ? dist[end] : null,
     visited,
+    tree,
     operations,
     notes,
   };

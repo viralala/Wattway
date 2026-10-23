@@ -11,6 +11,7 @@ export { compareAlgorithms, describeGraph, benchmark, LabInputError, LABELS } fr
 export type { CompareInput, CompareOutput, BenchmarkRow } from './compare';
 export { generateGraph, buildWeighted, edgeEnergy } from './graph';
 export { dijkstra, aStar, bellmanFord, floydWarshall, floydWarshallMatrix, floydPath } from './pathfinding';
+export { kruskal, prim, DisjointSet } from './mst';
 export { tspExact, tspNearestNeighbour, MAX_TSP_STOPS } from './tsp';
 export { LabMinHeap } from './MinHeap';
 export * from './types';

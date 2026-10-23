@@ -3,9 +3,9 @@
  * ---------------------------------------------------------------------------
  * algorithm.routes.ts — /api/algorithms (the Algorithm Lab)
  *
- * Public and database-free. The caps below exist because Floyd-Warshall is
- * O(V³) and Held-Karp is O(k²·2ᵏ): an unbounded request would be a cheap way to
- * pin a CPU core.
+ * Public and database-free. The caps below exist because the all-pairs matrix
+ * behind TSP is O(V³) and Held-Karp is O(k²·2ᵏ): an unbounded request would be a
+ * cheap way to pin a CPU core.
  * ---------------------------------------------------------------------------
  */
 

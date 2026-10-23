@@ -40,7 +40,7 @@ export async function compare(req: Request, res: Response): Promise<void> {
   const body = req.body as CompareBody;
   try {
     const result = compareAlgorithms(body);
-    ok(res, result, { explain: { generatedGraph: true, referenceAlgorithm: 'bellmanFord / tspExact' } });
+    ok(res, result, { explain: { generatedGraph: true, referenceAlgorithm: 'bellmanFord (hidden) / kruskal / tspExact' } });
   } catch (error) {
     if (error instanceof LabInputError) {
       throw ApiError.validation(error.message, [{ target: 'body', path: error.field, message: error.message }]);
