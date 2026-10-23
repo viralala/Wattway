@@ -59,10 +59,10 @@ for the full trace from course requirement to source file.
 | **Array** | Fixed-size port-status board per station | Known small size; O(1) to flip one port | ✅ |
 | **Tree (BST)** | Price-per-kWh and rating indexes for range queries | O(log n) range + point updates as tariffs change | ✅ |
 | **Trie** | Station / locality autocomplete | O(L) per keystroke, independent of dataset size | ✅ |
-| **Linked List** | Graph adjacency lists; waiting line with O(1) mid-queue removal | Sparse graphs; arrays cannot unlink without shifting | ⏳ |
+| **Linked List** | Doubly: live waiting line with O(1) mid-queue removal · singly: trip history · circular: round-robin ports + Josephus | Arrays cannot unlink without shifting | ✅ |
 | **Stack** | Iterative DFS; frontend undo-last-search | LIFO is exactly DFS; undo is last-action-first | ⏳ |
-| **Queue** | Per-station FIFO waiting line; BFS by battery range | FIFO is the fairness model people expect | ⏳ |
-| **Heap** | Dijkstra's frontier; top-N recommendations | Dijkstra's O((V+E) log V) bound depends on it | ⏳ |
+| **Queue** | Circular-array and linked queues; charger-slot job scheduler (FIFO / priority / round-robin); BFS frontier | FIFO is the fairness model people expect | ✅ |
+| **Heap** | Urgent-charge max-heap, min-max DEPQ, heapsort, leftist-heap queue merge ✅ · Dijkstra's frontier, top-N recommendations ⏳ | Dijkstra's O((V+E) log V) bound depends on it; merging lines needs a mergeable heap | ✅ / ⏳ |
 | **Graph** | Weighted road + station network, battery-pruned | The natural model for "A to B, maybe via a charger" | ⏳ |
 
 Every ✅ is written from first principles — no library stands in for a required
@@ -279,7 +279,7 @@ downloads and caches a mongod binary.
 | --- | --- | --- | --- |
 | **Indexing & Backend** | Viral | Tree (BST), Trie | ✅ shipped |
 | **Routing & Pathfinding** | _unassigned_ | Graph, Min-Heap | ⏳ pending |
-| **Queue & Realtime** | _unassigned_ | Queue, Linked List | ⏳ pending |
+| **Queue & Realtime** | Shreenath | Queue, Linked List, Heaps (max, DEPQ, leftist) | ✅ shipped |
 | **Client** | _unassigned_ | Stack, Array | ⏳ pending |
 
 Endpoints for pending modules are already mounted and answer `501` naming the

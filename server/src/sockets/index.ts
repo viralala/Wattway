@@ -35,6 +35,7 @@ import { verifyAccessToken } from '../services/tokenService';
 import { env } from '../config/env';
 import { logger } from '../utils/logger';
 import type { AuthUser } from '../types';
+import { registerQueueHandlers } from './queueHandlers';
 
 /** Socket.IO's socket, plus whatever the handshake resolved. */
 export interface WattWaySocket extends Socket {
@@ -134,9 +135,9 @@ export function createSocketServer(httpServer: HttpServer): SocketServer {
  * │  `stationIndex.upsert()` too — the recommendation score reads both.      │
  * └──────────────────────────────────────────────────────────────────────────┘
  */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-function registerHandlers(_socket: WattWaySocket): void {
-  // Intentionally empty — see the box above.
+function registerHandlers(socket: WattWaySocket): void {
+  // Queue & Realtime module (Shreenath) — events live in queueHandlers.ts.
+  registerQueueHandlers(socket);
 }
 
 /** Broadcast to everyone watching a station. Safe to call before init. */
