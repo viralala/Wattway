@@ -29,9 +29,9 @@
   letter-spacing: .07em;
   line-height: 1;
   color: #141414; /* the hero title is plain black, W included */
-  /* a soft pink offset shadow lifts it off the map like a sticker (the boxes' look); the cream
+  /* a soft blue offset shadow lifts it off the map like a sticker (the boxes' look); the cream
      halo keeps the thin strokes crisp over the paint washes */
-  text-shadow: .045em .045em 0 var(--blush-edge), 0 0 .25em rgba(251, 246, 228, .9);
+  text-shadow: .045em .045em 0 var(--mist-edge), 0 0 .25em rgba(251, 246, 228, .9);
   margin: 0 0 .15em;
   display: flex; align-items: baseline;
   white-space: nowrap;
