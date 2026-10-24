@@ -14,3 +14,5 @@ export { dijkstra, aStar, bellmanFord, floydWarshall, floydWarshallMatrix, floyd
 export { tspExact, tspNearestNeighbour, MAX_TSP_STOPS } from './tsp';
 export { LabMinHeap } from './MinHeap';
 export * from './types';
+export { evRoute, pickStations } from './evRoute';
+export type { EvRouteOptions, EvRouteResult, ChargeStop } from './evRoute';

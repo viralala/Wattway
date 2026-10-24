@@ -54,8 +54,23 @@ const benchmarkBody = z.object({
   repeats: z.coerce.number().int().min(1).max(9).default(3),
 });
 
+const evRouteBody = z.object({
+  nodes: nodesSchema.default(40),
+  seed: seedSchema.default(1),
+  regenStrength: regenSchema.default(0.6),
+  start: nodeIdSchema,
+  end: nodeIdSchema,
+  capacity: zNumber.min(1).max(500).default(20),
+  startCharge: zNumber.min(0).max(1).default(0.8),
+  reserve: zNumber.min(0).max(0.5).default(0.1),
+  chargeRate: zNumber.min(0.1).max(50).default(1),
+  speedKmh: zNumber.min(5).max(200).default(60),
+  stations: z.array(nodeIdSchema).max(MAX_NODES).optional(),
+});
+
 router.post('/compare', validate({ body: compareBody }), asyncHandler(lab.compare));
 router.get('/graph', validate({ query: graphQuery }), asyncHandler(lab.graph));
+router.post('/ev-route', validate({ body: evRouteBody }), asyncHandler(lab.evRoutePlan));
 router.post('/benchmark', validate({ body: benchmarkBody }), asyncHandler(lab.runBenchmark));
 
 export default router;
