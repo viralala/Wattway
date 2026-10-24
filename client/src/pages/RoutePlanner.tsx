@@ -108,18 +108,20 @@ export default function RoutePlanner() {
   const usableKm = Math.max(0, ((batteryPct - RESERVE * 100) / 100) * rangeKm);
 
   return (
-    <div className="container">
-      <PageHead eyebrow="plan the drive" title="Route planner">
-        Tell WattWay where you’re going and how much charge you have. It works out whether you need a stop and ranks
-        every station you can actually reach by detour, wait and price, weighted the way you choose.
-      </PageHead>
+    <div className="container page-route">
+      <div className="band green">
+        <PageHead eyebrow="plan the drive" title="Route planner">
+          Tell WattWay where you’re going and how much charge you have. It works out whether you need a stop and ranks
+          every station you can actually reach by detour, wait and price, weighted the way you choose.
+        </PageHead>
 
-      <p className="notice st-sample" role="note">
-        Preview: road distance is estimated as straight-line × {ROAD_FACTOR}, over the sample stations. Real routing
-        (Dijkstra on the road graph) arrives with the routing module.
-      </p>
+        <p className="notice st-sample" role="note">
+          Preview: road distance is estimated as straight-line × {ROAD_FACTOR}, over the sample stations. Real routing
+          (Dijkstra on the road graph) arrives with the routing module.
+        </p>
+      </div>
 
-      <div className="rt-layout">
+      <div className="band cream">
         <aside className="rt-controls">
           <section className="card rt-panel" aria-labelledby="rt-trip">
             <h3 id="rt-trip">Trip</h3>
@@ -247,8 +249,10 @@ export default function RoutePlanner() {
             </div>
           </section>
         </aside>
+      </div>
 
-        <div className="rt-main">
+      <div className="band green">
+        <div className="rt-result">
           <section className="card rt-summary" aria-live="polite">
             {samePlace ? (
               <p className="muted">Start and destination are the same place. Pick somewhere to go.</p>
@@ -359,88 +363,90 @@ export default function RoutePlanner() {
               onChoose={setPicked}
             />
           </section>
-
-          {!samePlace && plan && (
-            <section className="card" aria-labelledby="rt-ranked">
-              <h3 id="rt-ranked">Every viable stop, ranked</h3>
-              <p className="muted rt-explain">
-                Each factor is scaled so the best station scores 0 and the worst 1, then costs up to its weight in
-                points. The bar shows what each station lost to{' '}
-                <span className="swatch rt-sw distance" /> detour, <span className="swatch rt-sw wait" /> wait and{' '}
-                <span className="swatch rt-sw price" /> price.
-              </p>
-              {ranked.length === 0 ? (
-                <p className="muted">No station passes the range, detour and connector checks.</p>
-              ) : (
-                <div className="table-wrap" tabIndex={0} role="region" aria-label="Ranked stops">
-                  <table className="table rt-table">
-                    <thead>
-                      <tr>
-                        <th scope="col" className="num">
-                          #
-                        </th>
-                        <th scope="col">Station</th>
-                        <th scope="col">Score</th>
-                        <th scope="col" className="num">
-                          Detour
-                        </th>
-                        <th scope="col" className="num">
-                          Wait
-                        </th>
-                        <th scope="col" className="num">
-                          Cost
-                        </th>
-                        <th scope="col" className="num">
-                          Trip
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {ranked.map((r, i) => {
-                        const isChosen = r.station.id === chosen?.station.id;
-                        return (
-                          <tr key={r.station.id} className={isChosen ? 'chosen' : undefined}>
-                            <td className="num">{i + 1}</td>
-                            <td>
-                              <button
-                                className="rt-pick"
-                                aria-pressed={isChosen}
-                                onClick={() => setPicked(r.station.id)}
-                              >
-                                {r.station.name}
-                              </button>
-                              <span className="rt-rate">₹{r.station.pricePerKwh}/kWh</span>
-                            </td>
-                            <td>
-                              <span className="rt-score">
-                                <ScoreBar r={r} />
-                                <span
-                                  className="rt-score-num"
-                                  title={`Lost ${r.lost.distance.toFixed(1)} to detour, ${r.lost.wait.toFixed(1)} to wait, ${r.lost.price.toFixed(1)} to price`}
-                                >
-                                  {Math.round(r.score)}
-                                </span>
-                              </span>
-                            </td>
-                            <td className="num">+{r.detourKm.toFixed(1)} km</td>
-                            <td className="num">{formatWait(r.waitMin)}</td>
-                            <td className="num">₹{Math.round(r.chargeCost)}</td>
-                            <td className="num">{formatMin(r.tripMin)}</td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-              {ruledOut.length > 0 && (
-                <p className="muted rt-ruled">
-                  Ruled out: {ruledOut.map(([k, n]) => `${EXCLUSION_TEXT[k]} (${n})`).join(' · ')}.
-                </p>
-              )}
-            </section>
-          )}
         </div>
+      </div>
+
+      <div className="band cream">
+        {!samePlace && plan && (
+          <section className="card" aria-labelledby="rt-ranked">
+            <h3 id="rt-ranked">Every viable stop, ranked</h3>
+            <p className="muted rt-explain">
+              Each factor is scaled so the best station scores 0 and the worst 1, then costs up to its weight in
+              points. The bar shows what each station lost to{' '}
+              <span className="swatch rt-sw distance" /> detour, <span className="swatch rt-sw wait" /> wait and{' '}
+              <span className="swatch rt-sw price" /> price.
+            </p>
+            {ranked.length === 0 ? (
+              <p className="muted">No station passes the range, detour and connector checks.</p>
+            ) : (
+              <div className="table-wrap" tabIndex={0} role="region" aria-label="Ranked stops">
+                <table className="table rt-table">
+                  <thead>
+                    <tr>
+                      <th scope="col" className="num">
+                        #
+                      </th>
+                      <th scope="col">Station</th>
+                      <th scope="col">Score</th>
+                      <th scope="col" className="num">
+                        Detour
+                      </th>
+                      <th scope="col" className="num">
+                        Wait
+                      </th>
+                      <th scope="col" className="num">
+                        Cost
+                      </th>
+                      <th scope="col" className="num">
+                        Trip
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {ranked.map((r, i) => {
+                      const isChosen = r.station.id === chosen?.station.id;
+                      return (
+                        <tr key={r.station.id} className={isChosen ? 'chosen' : undefined}>
+                          <td className="num">{i + 1}</td>
+                          <td>
+                            <button
+                              className="rt-pick"
+                              aria-pressed={isChosen}
+                              onClick={() => setPicked(r.station.id)}
+                            >
+                              {r.station.name}
+                            </button>
+                            <span className="rt-rate">₹{r.station.pricePerKwh}/kWh</span>
+                          </td>
+                          <td>
+                            <span className="rt-score">
+                              <ScoreBar r={r} />
+                              <span
+                                className="rt-score-num"
+                                title={`Lost ${r.lost.distance.toFixed(1)} to detour, ${r.lost.wait.toFixed(1)} to wait, ${r.lost.price.toFixed(1)} to price`}
+                              >
+                                {Math.round(r.score)}
+                              </span>
+                            </span>
+                          </td>
+                          <td className="num">+{r.detourKm.toFixed(1)} km</td>
+                          <td className="num">{formatWait(r.waitMin)}</td>
+                          <td className="num">₹{Math.round(r.chargeCost)}</td>
+                          <td className="num">{formatMin(r.tripMin)}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+            {ruledOut.length > 0 && (
+              <p className="muted rt-ruled">
+                Ruled out: {ruledOut.map(([k, n]) => `${EXCLUSION_TEXT[k]} (${n})`).join(' · ')}.
+              </p>
+            )}
+          </section>
+        )}
       </div>
     </div>
   );

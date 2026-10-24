@@ -1,7 +1,8 @@
 /**
  * WattWay · Team Kothimbir 🌿
- * AlgorithmLab.tsx — compare Dijkstra, A*, Bellman-Ford, Floyd-Warshall and TSP
- * (exact vs nearest-neighbour) on the same road graph, and watch them search.
+ * AlgorithmLab.tsx — compare Dijkstra and A* (shortest route), Kruskal and Prim
+ * (minimum spanning tree) and TSP (exact vs nearest-neighbour) on the same road
+ * graph, and watch them work.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Button, DataTable, PageHead, Slider, type Column } from '../components/ui';
@@ -34,7 +35,7 @@ import '../styles/lab.css';
 const prefersReducedMotion = (): boolean =>
   typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 
-/** Nodes revealed per second for speed 1…10 (≈4 → ≈290). */
+/** Tree roads revealed per second for speed 1…10 (≈4 → ≈290). */
 const rateFor = (speed: number): number => 4 * 1.6 ** (speed - 1);
 
 function useDebounced<T>(value: T, ms: number): T {
@@ -59,7 +60,9 @@ export default function AlgorithmLab() {
   const [endId, setEndId] = useState('n1');
   const [pick, setPick] = useState<'start' | 'end'>('end');
   const [visible, setVisible] = useState<Set<AlgorithmId>>(() => new Set(ALL_ALGORITHMS));
-  const [explore, setExplore] = useState<Set<AlgorithmId>>(() => new Set<AlgorithmId>(['dijkstra', 'astar']));
+  const [animate, setAnimate] = useState<Set<AlgorithmId>>(
+    () => new Set<AlgorithmId>(['dijkstra', 'astar', 'kruskal', 'prim']),
+  );
 
   // ── server state ──────────────────────────────────────
   const [graph, setGraph] = useState<LabGraphData | null>(null);
@@ -136,10 +139,13 @@ export default function AlgorithmLab() {
   const rateRef = useRef(rateFor(speed));
   rateRef.current = rateFor(speed);
 
-  const allResults: AlgorithmResult[] = useMemo(() => (result ? [...result.pathfinding, ...result.tsp] : []), [result]);
+  const allResults: AlgorithmResult[] = useMemo(
+    () => (result ? [...result.pathfinding, ...result.mst, ...result.tsp] : []),
+    [result],
+  );
   const maxExplored = useMemo(
-    () => Math.max(0, ...allResults.filter((r) => explore.has(r.algorithm)).map((r) => r.visitedOrder.length)),
-    [allResults, explore],
+    () => Math.max(0, ...allResults.filter((r) => animate.has(r.algorithm)).map((r) => r.treeEdges.length)),
+    [allResults, animate],
   );
 
   const play = useCallback(
@@ -186,8 +192,8 @@ export default function AlgorithmLab() {
     }
   };
 
-  const toggleExplore = (id: AlgorithmId): void =>
-    setExplore((prev) => {
+  const toggleAnimate = (id: AlgorithmId): void =>
+    setAnimate((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
       else next.add(id);
@@ -202,7 +208,6 @@ export default function AlgorithmLab() {
       return next;
     });
 
-  const unit = result?.graph.unit ?? 'km';
   const by = (id: AlgorithmId): AlgorithmResult | undefined => allResults.find((r) => r.algorithm === id);
   const astar = by('astar');
   const dij = by('dijkstra');
@@ -220,7 +225,7 @@ export default function AlgorithmLab() {
         </>
       ),
     },
-    { key: 'cost', header: `Path cost (${unit === 'km' ? 'km' : 'energy'})`, numeric: true, render: (r) => formatCost(r.cost, unit) },
+    { key: 'cost', header: 'Cost', numeric: true, render: (r) => formatCost(r.cost, r.unit) },
     { key: 'nodes', header: 'Nodes explored', numeric: true, render: (r) => r.nodesExplored },
     { key: 'ops', header: 'Operations', numeric: true, render: (r) => r.operations.toLocaleString() },
     { key: 'ms', header: 'Runtime', numeric: true, render: (r) => formatMs(r.runtimeMs) },
@@ -256,234 +261,245 @@ export default function AlgorithmLab() {
 
   return (
     <div className="container">
-      <PageHead eyebrow="the heart of the project" title="Algorithm lab">
-        Six routing strategies, one road graph. Pick a start and end on the map, then watch Dijkstra spread in a
-        circle while A* narrows to a cone — and see where each one gets the answer wrong.
-      </PageHead>
+      <div className="band green">
+        <PageHead eyebrow="the heart of the project" title="Algorithm lab">
+          Six algorithms, one road graph. Pick a start and end on the map, then watch Dijkstra spread in a circle
+          while A* narrows to a cone, Kruskal and Prim build the same spanning tree in different orders, and an exact
+          tour beat a greedy one.
+        </PageHead>
 
-      {error && (
-        <div className="notice error" role="alert" style={{ marginBottom: '1rem' }}>
-          {error}
-        </div>
-      )}
-
-      <div className="lab-layout">
-        {/* ── controls ─────────────────────────────── */}
-        <aside className="panel lab-controls" aria-label="Lab controls">
-          <div className="row">
-            <div className="field" style={{ flex: 1 }}>
-              <label htmlFor="start">Start</label>
-              <select id="start" className="select" value={startId} onChange={(e) => setStartId(e.target.value)}>
-                {graph?.nodes.map((n) => (
-                  <option key={n.id} value={n.id}>
-                    {n.id}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="field" style={{ flex: 1 }}>
-              <label htmlFor="end">End</label>
-              <select id="end" className="select" value={endId} onChange={(e) => setEndId(e.target.value)}>
-                {graph?.nodes.map((n) => (
-                  <option key={n.id} value={n.id}>
-                    {n.id}
-                  </option>
-                ))}
-              </select>
-            </div>
+        {error && (
+          <div className="notice error" role="alert" style={{ marginBottom: '1rem' }}>
+            {error}
           </div>
+        )}
+      </div>
 
-          <label className="check">
-            <input type="checkbox" checked={mode === 'energy'} onChange={(e) => setMode(e.target.checked ? 'energy' : 'distance')} />
-            Energy cost mode
-          </label>
-          <small className="muted">
-            {mode === 'energy'
-              ? 'Edge weights are energy, not km. Downhill roads can go negative — Dijkstra and A* can be wrong here.'
-              : 'Edge weights are road length in km.'}
-          </small>
+      <div className="band cream">
+        <div className="lab-layout">
+          {/* ── controls ─────────────────────────────── */}
+          <aside className="panel lab-controls" aria-label="Lab controls">
+            <div className="row">
+              <div className="field" style={{ flex: 1 }}>
+                <label htmlFor="start">Start</label>
+                <select id="start" className="select" value={startId} onChange={(e) => setStartId(e.target.value)}>
+                  {graph?.nodes.map((n) => (
+                    <option key={n.id} value={n.id}>
+                      {n.id}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="field" style={{ flex: 1 }}>
+                <label htmlFor="end">End</label>
+                <select id="end" className="select" value={endId} onChange={(e) => setEndId(e.target.value)}>
+                  {graph?.nodes.map((n) => (
+                    <option key={n.id} value={n.id}>
+                      {n.id}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
 
-          <Slider
-            id="regen"
-            label="Downhill regen strength"
-            value={Math.round(regen * 100)}
-            min={0}
-            max={100}
-            step={5}
-            unit="%"
-            disabled={mode !== 'energy'}
-            hint={mode === 'energy' ? 'Share of descent energy recovered by regenerative braking.' : 'Turn on energy cost mode to use this.'}
-            onChange={(v) => setRegen(v / 100)}
-          />
+            <label className="check">
+              <input type="checkbox" checked={mode === 'energy'} onChange={(e) => setMode(e.target.checked ? 'energy' : 'distance')} />
+              Energy cost mode
+            </label>
+            <small className="muted">
+              {mode === 'energy'
+                ? 'Edge weights are energy, not km. Downhill roads can go negative — Dijkstra and A* can be wrong here.'
+                : 'Edge weights are road length in km.'}
+            </small>
 
-          <Slider
-            id="astar"
-            label="A* heuristic weight"
-            value={astarWeight}
-            min={1}
-            max={5}
-            step={0.1}
-            format={(v) => `${v.toFixed(1)}×`}
-            hint="1.0 = standard A*. Higher = faster, may not be optimal."
-            onChange={setAstarWeight}
-          />
-          {astar && dij && (
-            <p className="tradeoff" aria-live="polite">
-              A* explored <strong>{astar.nodesExplored}</strong> nodes vs Dijkstra’s <strong>{dij.nodesExplored}</strong>
-              {astar.cost !== null && optimalPath !== null && (
-                <>
-                  ; its path is{' '}
-                  <strong>{percentOver(astar.cost, optimalPath) < 0.005 ? 'optimal' : `${percentOver(astar.cost, optimalPath).toFixed(1)}% longer`}</strong>.
-                </>
-              )}
-            </p>
-          )}
+            <Slider
+              id="regen"
+              label="Downhill regen strength"
+              value={Math.round(regen * 100)}
+              min={0}
+              max={100}
+              step={5}
+              unit="%"
+              disabled={mode !== 'energy'}
+              hint={mode === 'energy' ? 'Share of descent energy recovered by regenerative braking.' : 'Turn on energy cost mode to use this.'}
+              onChange={(v) => setRegen(v / 100)}
+            />
 
-          <Slider
-            id="tsp"
-            label="TSP stops"
-            value={tspCount}
-            min={3}
-            max={12}
-            hint="Tour starts and ends at the start node."
-            warning={
-              tspCount > 10
-                ? `Exact (Held-Karp) gets slow past ~10 stops — ${tspCount} stops means ${2 ** (tspCount - 1)} subsets${exact ? ` (took ${formatMs(exact.runtimeMs)})` : ''}.`
-                : undefined
-            }
-            onChange={setTspCount}
-          />
+            <Slider
+              id="astar"
+              label="A* heuristic weight"
+              value={astarWeight}
+              min={1}
+              max={5}
+              step={0.1}
+              format={(v) => `${v.toFixed(1)}×`}
+              hint="1.0 = standard A*. Higher = faster, may not be optimal."
+              onChange={setAstarWeight}
+            />
+            {astar && dij && (
+              <p className="tradeoff" aria-live="polite">
+                A* explored <strong>{astar.nodesExplored}</strong> nodes vs Dijkstra’s <strong>{dij.nodesExplored}</strong>
+                {astar.cost !== null && optimalPath !== null && (
+                  <>
+                    ; its path is{' '}
+                    <strong>{percentOver(astar.cost, optimalPath) < 0.005 ? 'optimal' : `${percentOver(astar.cost, optimalPath).toFixed(1)}% longer`}</strong>.
+                  </>
+                )}
+              </p>
+            )}
 
-          <Slider
-            id="nodes"
-            label="Graph size"
-            value={nodeCount}
-            min={10}
-            max={300}
-            step={5}
-            format={(v) => `${v} nodes`}
-            onChange={setNodeCount}
-          />
+            <Slider
+              id="tsp"
+              label="TSP stops"
+              value={tspCount}
+              min={3}
+              max={12}
+              hint="Tour starts and ends at the start node."
+              warning={
+                tspCount > 10
+                  ? `Exact (Held-Karp) gets slow past ~10 stops — ${tspCount} stops means ${2 ** (tspCount - 1)} subsets${exact ? ` (took ${formatMs(exact.runtimeMs)})` : ''}.`
+                  : undefined
+              }
+              onChange={setTspCount}
+            />
 
-          <Slider id="speed" label="Animation speed" value={speed} min={1} max={10} format={(v) => `${v} / 10`} onChange={setSpeed} />
+            <Slider
+              id="nodes"
+              label="Graph size"
+              value={nodeCount}
+              min={10}
+              max={300}
+              step={5}
+              format={(v) => `${v} nodes`}
+              onChange={setNodeCount}
+            />
 
-          <div className="row">
-            <Button small variant="secondary" onClick={() => setSeed((s) => s + 1)}>
-              New graph
-            </Button>
-            <Button small onClick={() => play(true)} disabled={!result || maxExplored === 0}>
-              {playing ? 'Restart animation' : 'Replay animation'}
-            </Button>
-          </div>
-          <fieldset className="lab-explore">
-            <legend>Show explored nodes for</legend>
-            {(['dijkstra', 'astar', 'bellmanFord'] as AlgorithmId[]).map((id) => (
-              <label key={id} className="check">
-                <input type="checkbox" checked={explore.has(id)} onChange={() => toggleExplore(id)} />
-                <span className="swatch" style={{ background: ALGORITHM_META[id].color }} aria-hidden="true" />
-                {ALGORITHM_META[id].short}
-              </label>
-            ))}
-            <small className="muted">Bellman-Ford touches almost every node, so it’s off by default.</small>
-          </fieldset>
-        </aside>
+            <Slider id="speed" label="Animation speed" value={speed} min={1} max={10} format={(v) => `${v} / 10`} onChange={setSpeed} />
 
-        {/* ── map + results ────────────────────────── */}
-        <div className="lab-main">
-          <section className="panel" aria-label="Map">
-            <div className="lab-legend" role="group" aria-label="Show or hide each algorithm">
-              {ALL_ALGORITHMS.map((id) => (
+            <div className="row">
+              <Button small variant="secondary" onClick={() => setSeed((s) => s + 1)}>
+                New graph
+              </Button>
+              <Button small onClick={() => play(true)} disabled={!result || maxExplored === 0}>
+                {playing ? 'Restart animation' : 'Replay animation'}
+              </Button>
+            </div>
+            <fieldset className="lab-explore">
+              <legend>Animate on the map</legend>
+              {(['dijkstra', 'astar', 'kruskal', 'prim'] as AlgorithmId[]).map((id) => (
                 <label key={id} className="check">
-                  <input type="checkbox" checked={visible.has(id)} onChange={() => toggle(id)} />
+                  <input type="checkbox" checked={animate.has(id)} onChange={() => toggleAnimate(id)} />
                   <span className="swatch" style={{ background: ALGORITHM_META[id].color }} aria-hidden="true" />
                   {ALGORITHM_META[id].short}
                 </label>
               ))}
-            </div>
+              <small className="muted">
+                Searches leave a shaded trail of the roads they tried. Kruskal starts many small pieces that merge;
+                Prim grows one tree from S.
+              </small>
+            </fieldset>
+          </aside>
 
-            <div className="lab-map-wrap">
-              {graph ? (
-                <GraphCanvas
-                  graph={graph}
-                  results={allResults}
-                  visible={visible}
-                  explore={explore}
-                  progress={progress}
-                  mode={mode}
-                  startId={startId}
-                  endId={endId}
-                  stops={stops}
-                  showStops={visible.has('tspExact') || visible.has('tspNearestNeighbour')}
-                  pickLabel={pick}
-                  onPick={onPick}
-                />
-              ) : (
-                <div className="lab-map placeholder">{error ? 'Graph unavailable' : 'Loading graph…'}</div>
-              )}
-              {busy && <span className="lab-busy badge badge-bolt">Running…</span>}
-            </div>
-            <p className="muted lab-help">
-              Click a node to set the <strong>{pick}</strong>, or use the menus. Circles show nodes a search has
-              explored (choose which on the left); numbered stops are the TSP tour.
-              {mode === 'energy' && ' Teal roads have a downhill direction that returns energy.'}
-            </p>
-          </section>
-
-          <section className="panel" aria-label="Results">
-            <h2>Results</h2>
-            <DataTable
-              caption={`Same input, every algorithm · ${result?.graph.nodes ?? '…'} nodes, ${result?.graph.edges ?? '…'} directed edges`}
-              columns={columns}
-              rows={allResults}
-              rowKey={(r) => r.algorithm}
-              empty={error ? 'No results — see the message above.' : 'Running…'}
-            />
-            {caveats.length > 0 && (
-              <ul className="lab-notes">
-                {caveats.map((r) => (
-                  <li key={r.algorithm}>
-                    <span className="swatch" style={{ background: ALGORITHM_META[r.algorithm].color }} aria-hidden="true" />{' '}
-                    <strong>{r.label}:</strong> {r.notes.filter((n) => /negative|heuristic/i.test(n)).join(' ') || 'Not optimal on this input.'}
-                  </li>
+          {/* ── map + results ────────────────────────── */}
+          <div className="lab-main">
+            <section className="panel" aria-label="Map">
+              <div className="lab-legend" role="group" aria-label="Show or hide each algorithm">
+                {ALL_ALGORITHMS.map((id) => (
+                  <label key={id} className="check">
+                    <input type="checkbox" checked={visible.has(id)} onChange={() => toggle(id)} />
+                    <span className="swatch" style={{ background: ALGORITHM_META[id].color }} aria-hidden="true" />
+                    {ALGORITHM_META[id].short}
+                  </label>
                 ))}
-              </ul>
-            )}
-          </section>
+              </div>
+
+              <div className="lab-map-wrap">
+                {graph ? (
+                  <GraphCanvas
+                    graph={graph}
+                    results={allResults}
+                    visible={visible}
+                    animate={animate}
+                    progress={progress}
+                    mode={mode}
+                    startId={startId}
+                    endId={endId}
+                    stops={stops}
+                    showStops={visible.has('tspExact') || visible.has('tspNearestNeighbour')}
+                    pickLabel={pick}
+                    onPick={onPick}
+                  />
+                ) : (
+                  <div className="lab-map placeholder">{error ? 'Graph unavailable' : 'Loading graph…'}</div>
+                )}
+                {busy && <span className="lab-busy badge badge-bolt">Running…</span>}
+              </div>
+              <p className="muted lab-help">
+                Click a node to set the <strong>{pick}</strong>, or use the menus. Shaded roads show how far each
+                search spread, thin lines are the spanning trees, and numbered stops are the TSP tour.
+                {mode === 'energy' && ' Teal roads have a downhill direction that returns energy.'}
+              </p>
+            </section>
+
+            <section className="panel" aria-label="Results">
+              <h2>Results</h2>
+              <DataTable
+                caption={`Same input, every algorithm · ${result?.graph.nodes ?? '…'} nodes, ${result?.graph.edges ?? '…'} directed edges`}
+                columns={columns}
+                rows={allResults}
+                rowKey={(r) => r.algorithm}
+                empty={error ? 'No results — see the message above.' : 'Running…'}
+              />
+              {caveats.length > 0 && (
+                <ul className="lab-notes">
+                  {caveats.map((r) => (
+                    <li key={r.algorithm}>
+                      <span className="swatch" style={{ background: ALGORITHM_META[r.algorithm].color }} aria-hidden="true" />{' '}
+                      <strong>{r.label}:</strong> {r.notes.filter((n) => /negative|heuristic/i.test(n)).join(' ') || 'Not optimal on this input.'}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+          </div>
         </div>
       </div>
 
-      <section className="panel lab-bench" aria-label="Benchmark">
-        <div className="row" style={{ justifyContent: 'space-between' }}>
-          <div>
-            <h2 style={{ marginBottom: '.1em' }}>Benchmark</h2>
-            <p className="muted" style={{ margin: 0 }}>
-              Runtime vs graph size, 20 → 400 nodes (median of 3 runs, log scale). Uses the current cost mode.
-            </p>
+      <div className="band green">
+        <section className="panel lab-bench" aria-label="Benchmark">
+          <div className="row" style={{ justifyContent: 'space-between' }}>
+            <div>
+              <h2 style={{ marginBottom: '.1em' }}>Benchmark</h2>
+              <p className="muted" style={{ margin: 0 }}>
+                Runtime vs graph size, 20 → 400 nodes (median of 3 runs, log scale). Uses the current cost mode.
+              </p>
+            </div>
+            <Button onClick={runBench} disabled={benchBusy}>
+              {benchBusy ? 'Running…' : bench.length ? 'Run again' : 'Run benchmark'}
+            </Button>
           </div>
-          <Button onClick={runBench} disabled={benchBusy}>
-            {benchBusy ? 'Running…' : bench.length ? 'Run again' : 'Run benchmark'}
-          </Button>
-        </div>
-        {benchError && (
-          <div className="notice error" role="alert" style={{ marginTop: '1rem' }}>
-            {benchError}
-          </div>
-        )}
-        {bench.length > 0 && (
-          <>
-            <BenchmarkChart rows={bench} visible={visible} />
-            <p className="muted lab-help">
-              TSP lines use {benchStops} stops and exclude the shared all-pairs matrix build. Floyd-Warshall’s O(V³)
-              pulls away from Dijkstra as the graph grows. Use the checkboxes above the map to hide lines.
-            </p>
-          </>
-        )}
-      </section>
+          {benchError && (
+            <div className="notice error" role="alert" style={{ marginTop: '1rem' }}>
+              {benchError}
+            </div>
+          )}
+          {bench.length > 0 && (
+            <>
+              <BenchmarkChart rows={bench} visible={visible} />
+              <p className="muted lab-help">
+                TSP lines use {benchStops} stops and exclude the shared all-pairs matrix build. Kruskal and Prim must
+                reach every node, so they grow with the whole graph, while A* only searches toward its goal. Use the
+                checkboxes above the map to hide lines.
+              </p>
+            </>
+          )}
+        </section>
 
-      <section style={{ paddingBlock: '2rem 3rem' }} aria-label="About the algorithms">
-        <h2>The six strategies</h2>
-        <AlgorithmCards />
-      </section>
+        <section style={{ paddingBlock: '2rem 3rem' }} aria-label="About the algorithms">
+          <h2>The six algorithms</h2>
+          <AlgorithmCards />
+        </section>
+      </div>
     </div>
   );
 }

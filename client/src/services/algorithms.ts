@@ -6,13 +6,7 @@ import { request } from './api';
 
 export type CostMode = 'distance' | 'energy';
 
-export type AlgorithmId =
-  | 'dijkstra'
-  | 'astar'
-  | 'bellmanFord'
-  | 'floydWarshall'
-  | 'tspExact'
-  | 'tspNearestNeighbour';
+export type AlgorithmId = 'dijkstra' | 'astar' | 'kruskal' | 'prim' | 'tspExact' | 'tspNearestNeighbour';
 
 export interface LabNode {
   id: string;
@@ -41,6 +35,10 @@ export interface AlgorithmResult {
   label: string;
   path: string[];
   cost: number | null;
+  /** Spanning trees are always in km; the rest follow the cost mode. */
+  unit: 'km' | 'energy';
+  /** Roads committed to, in order: the search tree (Dijkstra / A*) or the spanning tree (Kruskal / Prim). */
+  treeEdges: Array<[string, string]>;
   nodesExplored: number;
   visitedOrder: string[];
   operations: number;
@@ -64,8 +62,9 @@ export interface CompareRequest {
 
 export interface CompareResponse {
   graph: { nodes: number; edges: number; seed: number; mode: CostMode; hasNegativeEdges: boolean; unit: 'km' | 'energy' };
-  reference: { pathCost: number | null; tspCost: number | null };
+  reference: { pathCost: number | null; mstCost: number | null; tspCost: number | null };
   pathfinding: AlgorithmResult[];
+  mst: AlgorithmResult[];
   tsp: AlgorithmResult[];
 }
 

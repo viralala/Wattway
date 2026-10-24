@@ -4,20 +4,21 @@
  */
 import { LinkButton, Card, RouteDivider } from '../components/ui';
 import { ScooterHero } from '../components/ScooterHero';
+import { Marquee } from '../components/Marquee';
 import mapBg from '../assets/images/map-bg.png';
 import '../styles/home.css';
 
 const PROBLEMS = [
-  { icon: '📍', title: 'Closest isn’t best', body: 'The nearest charger may be pricey, broken-in, or already full. Distance is only one third of the story.' },
-  { icon: '🔋', title: 'Your battery has opinions', body: 'At 18% you can’t detour twenty kilometres. WattWay plans around what your battery can actually reach.' },
-  { icon: '🎲', title: 'Queues run on luck', body: 'Arrive, circle, hope. A live virtual queue tells you where you stand before you commit to the drive.' },
+  { title: 'Closest isn’t best', body: 'The nearest charger may be pricey, broken-in, or already full. Distance is only one third of the story.' },
+  { title: 'Your battery has opinions', body: 'At 18% you can’t detour twenty kilometres. WattWay plans around what your battery can actually reach.' },
+  { title: 'Queues run on luck', body: 'Arrive, circle, hope. A live virtual queue tells you where you stand before you commit to the drive.' },
 ];
 
 const FEATURES = [
-  { icon: '🗺️', title: 'Live station map', body: 'Queue length, free ports, price and connector type for every nearby charger.', to: '/stations' },
-  { icon: '⚡', title: 'Battery-aware routing', body: 'Pick the charging stop by weighing distance, wait time and price your way.', to: '/route' },
-  { icon: '🎟️', title: 'Virtual queue', body: 'Join a line from your phone and watch your position tick down in real time.', to: '/queue' },
-  { icon: '📊', title: 'Operator dashboard', body: 'Slot occupancy, queue depth and a precomputed station-to-station distance table.', to: '/dashboard' },
+  { title: 'Live station map', body: 'Queue length, free ports, price and connector type for every nearby charger.', to: '/stations' },
+  { title: 'Battery-aware routing', body: 'Pick the charging stop by weighing distance, wait time and price your way.', to: '/route' },
+  { title: 'Virtual queue', body: 'Join a line from your phone and watch your position tick down in real time.', to: '/queue' },
+  { title: 'Operator dashboard', body: 'Slot occupancy, queue depth and a precomputed station-to-station distance table.', to: '/dashboard' },
 ];
 
 const STEPS = [
@@ -39,8 +40,18 @@ const DS = [
 const STATS = [
   { n: '256', label: 'tests passing' },
   { n: '7', label: 'data structures' },
-  { n: '5', label: 'algorithms compared' },
+  { n: '6', label: 'algorithms compared' },
 ];
+
+const PROMISES = [
+  'Find the best charger, not just the closest',
+  'Live queue lengths',
+  'Battery-aware routing',
+  'Fair virtual queues',
+  'Less waiting, less paying',
+];
+
+const UNDER_THE_HOOD = ['Dijkstra', 'A*', 'Kruskal', 'Prim', 'Travelling salesman', 'Binary search tree', 'Trie', 'Min-heap', 'Graph'];
 
 export default function Home() {
   return (
@@ -63,6 +74,8 @@ export default function Home() {
         <ScooterHero />
       </section>
 
+      <Marquee label="What WattWay does" items={PROMISES} />
+
       <section className="section home-section">
         <div className="container">
           <div className="section-title">
@@ -72,7 +85,6 @@ export default function Home() {
           <div className="grid cols-3">
             {PROBLEMS.map((p) => (
               <div key={p.title} className="card problem-card">
-                <div className="card-icon" aria-hidden="true">{p.icon}</div>
                 <h3>{p.title}</h3>
                 <p>{p.body}</p>
               </div>
@@ -91,7 +103,7 @@ export default function Home() {
           </div>
           <div className="grid cols-4">
             {FEATURES.map((f) => (
-              <Card key={f.title} icon={f.icon} title={f.title} to={f.to}>
+              <Card key={f.title} title={f.title} to={f.to}>
                 <p>{f.body}</p>
               </Card>
             ))}
@@ -149,17 +161,16 @@ export default function Home() {
           </div>
           <div className="grid cols-4">
             {DS.map((d) => (
-              <Card key={d.name} title={d.name} to="/data-structures">
+              <Card key={d.name} title={d.name}>
                 <span className={`badge ${d.status === 'shipped' ? 'badge-ok' : 'badge-warn'}`}>{d.status}</span>
                 <p className="ds-card">{d.use}</p>
               </Card>
             ))}
           </div>
-          <p style={{ textAlign: 'center', marginTop: '1.5rem' }}>
-            <LinkButton to="/data-structures" variant="ghost">Read the full breakdown</LinkButton>
-          </p>
         </div>
       </section>
+
+      <Marquee label="Algorithms and data structures inside WattWay" items={UNDER_THE_HOOD} tone="light" reverse seconds={130} />
 
       <section className="stats section" aria-label="Project stats">
         <div className="container stats-grid">

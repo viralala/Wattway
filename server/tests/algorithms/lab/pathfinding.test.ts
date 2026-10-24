@@ -152,6 +152,20 @@ describe('on generated road graphs (distance mode)', () => {
     }
     expect(floydWarshall(w, 0, 49).visited).toHaveLength(50);
   });
+
+  it('records the search tree: one real road into every settled node but the start', () => {
+    const graph = generateGraph(50, 4);
+    const w = buildWeighted(graph, 'distance', 0);
+    for (const run of [dijkstra(w, 0, 49), aStar(w, graph, 0, 49)]) {
+      expect(run.tree).toHaveLength(run.visited.length - 1);
+      run.tree!.forEach(([parent, child], i) => {
+        expect(child).toBe(run.visited[i + 1]);
+        // the parent was settled earlier, and the road exists
+        expect(run.visited.indexOf(parent)).toBeLessThan(i + 1);
+        expect(w.adjacency[parent].some((arc) => arc.to === child)).toBe(true);
+      });
+    }
+  });
 });
 
 describe('energy mode (negative edges from regenerative braking)', () => {

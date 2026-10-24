@@ -14,9 +14,12 @@
 .lab-map { display: block; width: 100%; height: auto; aspect-ratio: 1 / 1; border-radius: var(--radius-sm); border: 2px solid var(--route); cursor: crosshair; background: var(--cream); touch-action: manipulation; }
 .lab-map.placeholder { display: grid; place-items: center; color: var(--ink-soft); font-family: var(--font-body-strong); }
 .lab-map-bg { fill: var(--cream); }
-.lab-road { stroke: rgba(20, 48, 63, .38); stroke-width: .1; }
+.lab-road { stroke: rgba(31, 58, 42, .38); stroke-width: .1; }
 .lab-road.regen { stroke: #1d8a8a; stroke-width: .2; }
-.lab-node { stroke: rgba(20, 48, 63, .55); stroke-width: .05; }
+.lab-node { stroke: rgba(31, 58, 42, .55); stroke-width: .05; }
+/* Group opacity, not stroke-opacity: overlapping road ends would otherwise stack into darker blobs. */
+.lab-search { fill: none; stroke-width: .62; stroke-linecap: round; stroke-linejoin: round; opacity: .3; }
+.lab-mst { fill: none; stroke-width: .13; stroke-linecap: round; opacity: .9; }
 .lab-pin circle { stroke: #fff; stroke-width: .15; }
 .lab-pin.start circle { fill: var(--ok); }
 .lab-pin.end circle { fill: var(--red); }

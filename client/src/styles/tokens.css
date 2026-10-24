@@ -1,16 +1,27 @@
 /* WattWay · Team Kothimbir 🌿 — design tokens. Every page reads from here. */
 :root {
   /* ink & accents sampled from the design image */
-  --ink: #14303f;
-  --ink-soft: #3b5563;
-  --pink: #d0566b;
+  --ink: #1f3a2a;
+  --ink-soft: #4b6352;
+  /* one raspberry accent family, used sparingly everywhere (buttons, links, script headings) */
+  --pink: #d0607a;
   --pink-deep: #b13f56; /* AA-contrast variant for small text */
-  --plum: #7a1f4b;
-  --red: #d93a2b;
-  --red-deep: #b72b1e;
+  --plum: #9c3653;
+  --red: #c44862;
+  --red-deep: #a3374e;
   --bolt: #ffd23f;
   --bolt-glow: rgba(255, 210, 63, 0.75);
-  --teal: #0e3b33;
+  --teal: #2b6378; /* the script W in the logo: a deep lake blue from the map */
+
+  /* palette: primary light green (--leaf), secondary pastel pink (--blush),
+     tertiary forest green (--forest), with the map's water blue (--mist) as a soft accent
+     and wine for every script word */
+  --blush: #f8d5dc;
+  --blush-edge: #e8a6b5;
+  --mist: #d9edef;
+  --mist-edge: #9fcad0;
+  --forest: #2e5435;
+  --wine: #7a2e44;
 
   /* surfaces */
   --cream: #fbf6e4;
@@ -18,16 +29,16 @@
   --leaf: #e6f0cf;
   --leaf-deep: #cfe2a8;
   --water: #bfe0dc;
-  --route: #b59a76; /* the dashed trail colour on the map */
-  --line: rgba(20, 48, 63, 0.18);
+  --route: #93a86e; /* the dashed trail colour: a mid sage */
+  --line: rgba(31, 58, 42, 0.18);
   --ok: #2f7d4f;
   --warn: #b7791f;
 
   /* algorithm colours (Algorithm Lab) */
   --algo-dijkstra: #d93a2b;
   --algo-astar: #1f6fb2;
-  --algo-bellman: #7a1f4b;
-  --algo-floyd: #2f7d4f;
+  --algo-kruskal: #7a1f4b;
+  --algo-prim: #2f7d4f;
   --algo-tsp-exact: #b7791f;
   --algo-tsp-nn: #6b4fa0;
 
@@ -40,7 +51,7 @@
   /* shape */
   --radius: 18px;
   --radius-sm: 10px;
-  --shadow: 0 10px 30px -12px rgba(20, 48, 63, 0.35);
+  --shadow: 0 10px 30px -12px rgba(31, 58, 42, 0.35);
   --maxw: 1120px;
   --gutter: clamp(1rem, 4vw, 2rem);
 }

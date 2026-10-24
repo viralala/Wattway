@@ -7,12 +7,12 @@ import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import mapBg from '../assets/images/map-bg.png';
 
 const LINKS = [
+  { to: '/', label: 'Home' },
   { to: '/stations', label: 'Station map' },
   { to: '/route', label: 'Route planner' },
   { to: '/queue', label: 'Virtual queue' },
   { to: '/dashboard', label: 'Operators' },
   { to: '/lab', label: 'Algorithm lab' },
-  { to: '/data-structures', label: 'Data structures' },
 ];
 
 export function Nav() {
@@ -40,7 +40,10 @@ export function Nav() {
         <ul id="nav-links" className={`nav-links${open ? ' open' : ''}`}>
           {LINKS.map((l) => (
             <li key={l.to}>
-              <NavLink to={l.to}>{l.label}</NavLink>
+              {/* `end`: without it "/" counts as active on every page */}
+              <NavLink to={l.to} end={l.to === '/'}>
+                {l.label}
+              </NavLink>
             </li>
           ))}
         </ul>
@@ -52,15 +55,7 @@ export function Nav() {
 export function Footer() {
   return (
     <footer className="footer">
-      <div className="container row">
-        <span>Built by Team Kothimbir 🌿</span>
-        <span>
-          MIT License ·{' '}
-          <a href="https://github.com/viralala/Wattway" target="_blank" rel="noreferrer">
-            GitHub
-          </a>
-        </span>
-      </div>
+      <div className="container">WattWay</div>
     </footer>
   );
 }

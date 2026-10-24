@@ -227,120 +227,128 @@ export default function Dashboard() {
   const mine = useMemo(() => new Set(SAMPLE_STATIONS.filter((s) => s.operator === operator).map((s) => s.id)), [operator]);
 
   return (
-    <div className="container">
-      <PageHead eyebrow="for station operators" title="Operator dashboard">
-        See who is charging, who is waiting and how long each port has been busy. Take a faulty port out of service,
-        end an overstaying session, clear no-shows from the line, and find the nearest station to send drivers to.
-      </PageHead>
+    <div className="container page-operators">
+      <div className="band green">
+        <PageHead eyebrow="for station operators" title="Operator dashboard">
+          See who is charging, who is waiting and how long each port has been busy. Take a faulty port out of service,
+          end an overstaying session, clear no-shows from the line, and find the nearest station to send drivers to.
+        </PageHead>
 
-      <p className="notice st-sample" role="note">
-        Demo operator view with sample data. In the real app this page needs an operator login and shows only the
-        stations you manage. Changes here last until you reload.
-      </p>
+        <p className="notice st-sample" role="note">
+          Demo operator view with sample data. In the real app this page needs an operator login and shows only the
+          stations you manage. Changes here last until you reload.
+        </p>
 
-      <div className="db-toolbar">
-        <div className="field">
-          <label htmlFor="db-operator">Operator</label>
-          <select id="db-operator" className="select" value={operator} onChange={(e) => setOperator(e.target.value)}>
-            {OPERATORS.map((o) => (
-              <option key={o} value={o}>
-                {o}
-              </option>
-            ))}
-          </select>
+        <div className="db-toolbar">
+          <div className="field">
+            <label htmlFor="db-operator">Operator</label>
+            <select id="db-operator" className="select" value={operator} onChange={(e) => setOperator(e.target.value)}>
+              {OPERATORS.map((o) => (
+                <option key={o} value={o}>
+                  {o}
+                </option>
+              ))}
+            </select>
+          </div>
+          <Button variant="ghost" small onClick={onReset}>
+            Reset demo data
+          </Button>
         </div>
-        <Button variant="ghost" small onClick={onReset}>
-          Reset demo data
-        </Button>
+
+        <p className="db-message" role="status" aria-live="polite">
+          {message}
+        </p>
       </div>
 
-      <p className="db-message" role="status" aria-live="polite">
-        {message}
-      </p>
+      <div className="band cream">
+        {kpi && (
+          <section className="db-kpis" aria-label="Right now">
+            <div className="card db-kpi">
+              <span className="db-kpi-label">Ports in use</span>
+              <span className="db-kpi-value">{kpi.pct}%</span>
+              <span className="muted">
+                {kpi.busy} of {kpi.working} working ports
+              </span>
+            </div>
+            <div className="card db-kpi">
+              <span className="db-kpi-label">Cars waiting</span>
+              <span className="db-kpi-value">{kpi.waiting}</span>
+              <span className="muted">across {ops?.length} stations</span>
+            </div>
+            <div className="card db-kpi">
+              <span className="db-kpi-label">Longest session</span>
+              <span className={`db-kpi-value${(kpi.longest?.occupiedMin ?? 0) > LONG_SESSION_MIN ? ' warn' : ''}`}>
+                {kpi.longest ? `${kpi.longest.occupiedMin} min` : '—'}
+              </span>
+              <span className="muted">{kpi.longest ? `${kpi.longest.plate} at ${kpi.longest.station}` : 'No one charging'}</span>
+            </div>
+            <div className="card db-kpi">
+              <span className="db-kpi-label">Faulted ports</span>
+              <span className={`db-kpi-value${kpi.faulted > 0 ? ' bad' : ''}`}>{kpi.faulted}</span>
+              <span className="muted">{kpi.faulted ? 'need a technician' : 'all ports working'}</span>
+            </div>
+          </section>
+        )}
 
-      {kpi && (
-        <section className="db-kpis" aria-label="Right now">
-          <div className="card db-kpi">
-            <span className="db-kpi-label">Ports in use</span>
-            <span className="db-kpi-value">{kpi.pct}%</span>
-            <span className="muted">
-              {kpi.busy} of {kpi.working} working ports
-            </span>
-          </div>
-          <div className="card db-kpi">
-            <span className="db-kpi-label">Cars waiting</span>
-            <span className="db-kpi-value">{kpi.waiting}</span>
-            <span className="muted">across {ops?.length} stations</span>
-          </div>
-          <div className="card db-kpi">
-            <span className="db-kpi-label">Longest session</span>
-            <span className={`db-kpi-value${(kpi.longest?.occupiedMin ?? 0) > LONG_SESSION_MIN ? ' warn' : ''}`}>
-              {kpi.longest ? `${kpi.longest.occupiedMin} min` : '—'}
-            </span>
-            <span className="muted">{kpi.longest ? `${kpi.longest.plate} at ${kpi.longest.station}` : 'No one charging'}</span>
-          </div>
-          <div className="card db-kpi">
-            <span className="db-kpi-label">Faulted ports</span>
-            <span className={`db-kpi-value${kpi.faulted > 0 ? ' bad' : ''}`}>{kpi.faulted}</span>
-            <span className="muted">{kpi.faulted ? 'need a technician' : 'all ports working'}</span>
-          </div>
-        </section>
-      )}
+        <div className="db-row">
+          <section className="card" aria-labelledby="db-today">
+            <h3 id="db-today">Today, hour by hour</h3>
+            <p className="muted db-sub">Sample data for {operator}’s stations.</p>
+            <DayChart stats={stats} />
+          </section>
 
-      <div className="db-row">
-        <section className="card" aria-labelledby="db-today">
-          <h3 id="db-today">Today, hour by hour</h3>
-          <p className="muted db-sub">Sample data for {operator}’s stations.</p>
-          <DayChart stats={stats} />
-        </section>
+          <section className="card" aria-labelledby="db-redirect">
+            <h3 id="db-redirect">Where to send waiting drivers</h3>
+            <p className="muted db-sub">Nearest station with a free port, by shortest road distance from the table below.</p>
+            {tips.length === 0 ? (
+              <p className="db-ok">None of your stations is full with a line right now.</p>
+            ) : (
+              <ul className="db-tips">
+                {tips.map((t) => (
+                  <li key={t.from.id}>
+                    <strong>{t.from.name}</strong> is full. Nearest free port: <strong>{t.to.name}</strong>,{' '}
+                    {t.km.toFixed(1)} km away{t.hops > 0 ? ` (via ${t.hops} ${t.hops === 1 ? 'station' : 'stations'})` : ''}
+                    {t.to.operator !== operator && <span className="muted"> · run by {t.to.operator}</span>}.
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+        </div>
+      </div>
 
-        <section className="card" aria-labelledby="db-redirect">
-          <h3 id="db-redirect">Where to send waiting drivers</h3>
-          <p className="muted db-sub">Nearest station with a free port, by shortest road distance from the table below.</p>
-          {tips.length === 0 ? (
-            <p className="db-ok">None of your stations is full with a line right now.</p>
+      <div className="band green">
+        <section className="db-section" aria-labelledby="db-stations">
+          <h2 id="db-stations">Your stations</h2>
+          {ops === null ? (
+            <p className="muted">Loading…</p>
           ) : (
-            <ul className="db-tips">
-              {tips.map((t) => (
-                <li key={t.from.id}>
-                  <strong>{t.from.name}</strong> is full. Nearest free port: <strong>{t.to.name}</strong>,{' '}
-                  {t.km.toFixed(1)} km away{t.hops > 0 ? ` (via ${t.hops} ${t.hops === 1 ? 'station' : 'stations'})` : ''}
-                  {t.to.operator !== operator && <span className="muted"> · run by {t.to.operator}</span>}.
-                </li>
+            <div className="db-stations">
+              {ops.map((op) => (
+                <StationPanel
+                  key={op.station.id}
+                  op={op}
+                  onPort={(i, a) => onPort(op, i, a)}
+                  onRemove={(plate) => onRemove(op, plate)}
+                />
               ))}
-            </ul>
+            </div>
           )}
         </section>
       </div>
 
-      <section className="db-section" aria-labelledby="db-stations">
-        <h2 id="db-stations">Your stations</h2>
-        {ops === null ? (
-          <p className="muted">Loading…</p>
-        ) : (
-          <div className="db-stations">
-            {ops.map((op) => (
-              <StationPanel
-                key={op.station.id}
-                op={op}
-                onPort={(i, a) => onPort(op, i, a)}
-                onRemove={(plate) => onRemove(op, plate)}
-              />
-            ))}
-          </div>
-        )}
-      </section>
-
-      <section className="db-section card" aria-labelledby="db-fw-title">
-        <h2 id="db-fw-title">Road distance between every pair of stations</h2>
-        <p className="db-fw-intro">
-          Floyd–Warshall over {ROAD_LINKS.length} road links between {SAMPLE_STATIONS.length} stations. It tries every
-          station k as a stopover for every pair (i, j), so it runs V³ ={' '}
-          {table ? table.relaxations.toLocaleString('en-IN') : '…'} steps once and then answers any pair instantly.
-          Your stations are highlighted; darker cells are farther apart.
-        </p>
-        {table && <DistanceMatrix table={table} highlight={mine} />}
-      </section>
+      <div className="band cream">
+        <section className="db-section card" aria-labelledby="db-fw-title">
+          <h2 id="db-fw-title">Road distance between every pair of stations</h2>
+          <p className="db-fw-intro">
+            Floyd–Warshall over {ROAD_LINKS.length} road links between {SAMPLE_STATIONS.length} stations. It tries every
+            station k as a stopover for every pair (i, j), so it runs V³ ={' '}
+            {table ? table.relaxations.toLocaleString('en-IN') : '…'} steps once and then answers any pair instantly.
+            Your stations are highlighted; darker cells are farther apart.
+          </p>
+          {table && <DistanceMatrix table={table} highlight={mine} />}
+        </section>
+      </div>
     </div>
   );
 }

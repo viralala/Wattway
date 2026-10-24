@@ -1,7 +1,7 @@
 /**
  * WattWay · Team Kothimbir 🌿
  * BenchmarkChart.tsx — runtime vs graph size, one line per algorithm, on a log
- * axis (Floyd-Warshall and Dijkstra differ by orders of magnitude, so a linear
+ * axis (exact TSP and the greedy tour differ by orders of magnitude, so a linear
  * axis would flatten everything but the slowest line).
  */
 import type { AlgorithmId, BenchmarkRow } from '../../services/algorithms';

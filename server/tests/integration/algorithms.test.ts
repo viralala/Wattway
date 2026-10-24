@@ -10,16 +10,18 @@ import request from 'supertest';
 import { app } from '../../src/app';
 
 describe('POST /api/algorithms/compare', () => {
-  it('compares all four pathfinding algorithms on one input', async () => {
+  it('compares Dijkstra and A*, plus both spanning trees, on one input', async () => {
     const res = await request(app)
       .post('/api/algorithms/compare')
       .send({ nodes: 50, seed: 4, start: 'n0', end: 'n49' });
 
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
-    const { pathfinding, graph } = res.body.data;
+    const { pathfinding, mst, graph } = res.body.data;
     expect(graph.nodes).toBe(50);
-    expect(pathfinding).toHaveLength(4);
+    expect(pathfinding.map((r: { algorithm: string }) => r.algorithm)).toEqual(['dijkstra', 'astar']);
+    expect(mst.map((r: { algorithm: string }) => r.algorithm)).toEqual(['kruskal', 'prim']);
+    expect(mst[0].treeEdges).toHaveLength(49);
     for (const r of pathfinding) {
       expect(r).toEqual(
         expect.objectContaining({
@@ -54,9 +56,8 @@ describe('POST /api/algorithms/compare', () => {
 
     expect(res.status).toBe(200);
     expect(res.body.data.graph.hasNegativeEdges).toBe(true);
-    const bf = res.body.data.pathfinding.find((r: { algorithm: string }) => r.algorithm === 'bellmanFord');
     const dj = res.body.data.pathfinding.find((r: { algorithm: string }) => r.algorithm === 'dijkstra');
-    expect(bf.optimal).toBe(true);
+    expect(res.body.data.reference.pathCost).toEqual(expect.any(Number));
     expect(dj.notes.join(' ')).toMatch(/negative/i);
   });
 
@@ -108,6 +109,8 @@ describe('POST /api/algorithms/benchmark', () => {
     expect(res.body.data.rows).toHaveLength(2);
     expect(res.body.data.rows[0].runtimeMs).toHaveProperty('dijkstra');
     expect(res.body.data.rows[0].runtimeMs).toHaveProperty('tspExact');
+    expect(res.body.data.rows[0].runtimeMs).toHaveProperty('kruskal');
+    expect(res.body.data.rows[0].runtimeMs).not.toHaveProperty('bellmanFord');
   });
 
   it('rejects oversized graphs', async () => {
