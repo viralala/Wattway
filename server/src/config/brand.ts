@@ -40,10 +40,11 @@ export const BRAND = Object.freeze({
     }),
     Object.freeze({
       name: 'Queue & Realtime',
-      owner: 'unassigned',
-      dataStructures: ['Queue', 'Linked List'],
-      summary: 'Per-station virtual waiting line, Socket.IO fan-out, operator dashboard.',
-      status: 'pending',
+      owner: 'Shreenath',
+      dataStructures: ['Queue', 'Linked List', 'Heap (Max-Heap, DEPQ, Leftist)'],
+      summary:
+        'Per-station virtual waiting line, charger-slot scheduling, trip history, Socket.IO fan-out, operator queue tools.',
+      status: 'shipped',
     }),
     Object.freeze({
       name: 'Client',

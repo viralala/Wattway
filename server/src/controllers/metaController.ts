@@ -44,12 +44,13 @@ export async function meta(_req: Request, res: Response): Promise<void> {
     modules: BRAND.modules,
     dataStructures: {
       Array: 'Fixed-size port-status board per station (models/Station.ts)',
-      'Linked List': 'Graph adjacency lists; per-station waiting line — pending',
+      'Linked List':
+        'Doubly: live waiting line, O(1) leave (datastructures/LinkedList.ts) — shipped; singly: trip history; circular: round-robin ports + Josephus',
       Stack: 'Iterative DFS; frontend undo-last-search — pending',
-      Queue: 'Per-station virtual waiting line; BFS — pending',
+      Queue: 'Circular array + linked queues; charger-slot job scheduler (datastructures/Queue.ts) — shipped',
       'Tree (BST)': 'Price and rating range index (datastructures/BST.ts) — shipped',
       Trie: 'Search autocomplete (datastructures/Trie.ts) — shipped',
-      Heap: "Dijkstra's frontier; top-N ranking — pending",
+      Heap: "Max-heap urgent queue, min-max DEPQ, heapsort, leftist-heap line merge (Queue & Realtime) — shipped; Dijkstra's frontier — pending",
       Graph: 'Road + station network — pending',
     },
     endpoints: {
@@ -82,14 +83,29 @@ export async function meta(_req: Request, res: Response): Promise<void> {
         'POST   /api/index/rebuild    (admin)',
         'POST   /api/index/rebalance  (admin)',
       ],
+      queue: [
+        'GET    /api/queue/:stationId            [Doubly Linked List + Min-Heap estimates]',
+        'GET    /api/queue/:stationId/position   [Hash index -> list node]',
+        'POST   /api/queue/:stationId/join       [Doubly Linked List]',
+        'DELETE /api/queue/:stationId/leave      [O(1) unlink]',
+        'GET    /api/queue/:stationId/simulate   [Queue + Max-Heap + Circular List scheduler]',
+        'GET    /api/queue/:stationId/report     [Heapsort + Max-Heap + DEPQ]  (operator)',
+        'POST   /api/queue/:stationId/allocate   (operator)',
+        'POST   /api/queue/:stationId/merge      [Leftist Heap]  (operator)',
+        'GET    /api/queue/demo/josephus         [Circular Linked List]',
+      ],
+      trips: [
+        'GET    /api/trips      [Singly Linked List]',
+        'POST   /api/trips      [insert at head]',
+        'GET    /api/trips/:id',
+        'DELETE /api/trips/:id  [unlink node]',
+      ],
+      realtime: [
+        'in  queue:watch / queue:unwatch / queue:position',
+        'out queue:updated / ports:updated / queue:position',
+      ],
       pending: {
         routes: ['POST /api/routes/plan  [Graph + Heap]'],
-        queue: [
-          'POST   /api/queue/:stationId/join   [Queue]',
-          'DELETE /api/queue/:stationId/leave  [Linked List]',
-          'GET    /api/queue/:stationId        [Queue]',
-        ],
-        trips: ['GET /api/trips  [Linked List]'],
       },
     },
   });

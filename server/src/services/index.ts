@@ -24,3 +24,9 @@ export {
   bearerFrom,
 } from './tokenService';
 export type { AccessTokenClaims, RefreshTokenClaims, TokenPair, TokenType } from './tokenService';
+
+// Queue & Realtime module (Shreenath)
+export { QueueService, StationLine, queueService, DEFAULT_CHARGE_MINUTES } from './queueService';
+export type { QueueSnapshot, QueueChange, YouView, JoinOptions, LiveDriver } from './queueService';
+export { recordTrip, history as tripHistory, getTrip, deleteTrip, buildHistoryList } from './tripService';
+export type { RecordTripInput, TripHistory } from './tripService';
