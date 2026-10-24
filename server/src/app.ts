@@ -88,7 +88,7 @@ export function createApp(): Express {
 
   // The dashboard is plain static files, served from the same origin as the API
   // so the browser needs no CORS allowance and no build step.
-  app.use('/dashboard', express.static(path.resolve(__dirname, '../../client/public/dashboard')));
+  app.use('/live', express.static(path.resolve(__dirname, '../../client/public/live')));
   // (static files sit before the limiter: page loads must not spend the API quota)
 
   app.use(apiLimiter);

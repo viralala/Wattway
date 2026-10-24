@@ -39,7 +39,7 @@ async function main(): Promise<void> {
 
   await import('../src/server');
   // eslint-disable-next-line no-console
-  console.log('\nDashboard → http://localhost:' + (process.env.PORT ?? '4000') + '/dashboard/\n');
+  console.log('\nDashboard → http://localhost:' + (process.env.PORT ?? '4000') + '/live/\n');
 }
 
 main().catch((error: unknown) => {
