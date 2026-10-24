@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WattWay Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="dashboard.css">
+<link rel="stylesheet" href="live.css">
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <div class="eyebrow">Data Structures &amp; Algorithms · Group project</div>
+      <h1>EV Charging Station Route &amp; Queue Optimizer</h1>
+      <p class="sub">Live dashboard on the WattWay API: Trie autocomplete and BST range search on real stations, port control for operators, and the battery-aware route planner fed with live prices and queues.</p>
+    </div>
+    <div class="chips" aria-label="Data structures and backend status">
+      <span class="pill info" id="api-status" role="status" aria-live="polite">Connecting to backend…</span>
+      <span class="chip"><b>Graph</b> linked-list adjacency</span>
+      <span class="chip"><b>Min-Heap</b> priority queue</span>
+      <span class="chip"><b>BST</b> price &amp; rating</span>
+      <span class="chip"><b>Trie</b> name search</span>
+    </div>
+  </header>
+
+  <div class="layout">
+    <aside class="card stack" aria-label="Trip settings">
+      <div class="stack" id="auth-box" style="gap:8px" aria-live="polite"></div>
+      <hr class="sep">
+      <div class="seg" role="group" aria-label="Mode">
+        <button type="button" id="mode-plan" aria-pressed="true">Route planner</button>
+        <button type="button" id="mode-reach" aria-pressed="false">Reachable (BFS)</button>
+      </div>
+
+      <div class="field"><label for="src">Start</label><select id="src"></select></div>
+      <div class="field" id="dst-field"><label for="dst">Destination</label><select id="dst"></select></div>
+
+      <div class="field">
+        <label for="battery"><span>Battery</span><span class="val" id="battery-val"></span></label>
+        <input type="range" id="battery" min="0" max="100" step="1" value="35">
+        <div class="hint" id="usable-hint" style="margin:0"></div>
+      </div>
+
+      <div class="two">
+        <div class="field"><label for="fullrange">Full range (km)</label><input type="number" id="fullrange" min="50" max="800" step="10" value="200"></div>
+        <div class="field"><label for="reserve">Reserve (%)</label><input type="number" id="reserve" min="0" max="30" step="1" value="10"></div>
+      </div>
+
+      <div class="field" data-plan-only>
+        <label for="charge"><span>Charging time</span><span class="val" id="charge-val"></span></label>
+        <input type="range" id="charge" min="10" max="60" step="5" value="30">
+      </div>
+      <div class="field" data-plan-only>
+        <label for="pricew"><span>Price weight</span><span class="val" id="pricew-val"></span></label>
+        <input type="range" id="pricew" min="0" max="2" step="0.1" value="0.5">
+      </div>
+
+      <hr class="sep">
+      <p class="sect">Quick scenarios</p>
+      <div class="btnrow">
+        <button type="button" class="btn" data-preset="90">Full battery</button>
+        <button type="button" class="btn primary" data-preset="35">Needs a charge</button>
+        <button type="button" class="btn" data-preset="12">Battery too low</button>
+      </div>
+
+      <hr class="sep" data-plan-only>
+      <div class="stack" data-plan-only style="gap:10px">
+        <p class="sect">Station queues (simulated)</p>
+        <div id="queues" class="stack" style="gap:8px"></div>
+        <div class="btnrow">
+          <button type="button" class="btn" id="busy">Make best stop busy</button>
+          <button type="button" class="btn" id="reset-q">Reset queues</button>
+        </div>
+        <p class="note" id="note" aria-live="polite"></p>
+        <div class="btnrow"><button type="button" class="btn" id="sync-live">Use live station data</button></div>
+        <p class="hint" style="margin:0" id="live-hint">Prices and queue lengths for the Pune stations come from the API. Other stations keep a simulated queue until the Queue module lands.</p>
+      </div>
+    </aside>
+
+    <div class="right">
+      <section class="card" aria-label="Road network map">
+        <div class="card-head">
+          <h2>Road and station network</h2>
+          <span class="tag">18 nodes · 31 roads · weights: km and minutes</span>
+        </div>
+        <div class="legend" id="legend"></div>
+        <div class="map-scroll"><svg class="map" id="map" viewBox="0 0 1000 640" role="img" aria-label="Map of the sample road network with the planned route"></svg></div>
+      </section>
+
+      <section class="card" aria-label="Result" id="result"></section>
+    </div>
+  </div>
+
+
+  <section class="card" aria-label="Live station search" id="search-card">
+    <div class="card-head"><h2>Station search</h2><span class="tag">Trie · BST · /api/search</span></div>
+    <div class="search-grid">
+      <div class="field ac">
+        <label for="q">Name, area, city or operator <span class="val">Trie</span></label>
+        <input type="search" id="q" autocomplete="off" placeholder="Try andh, pune or tata" role="combobox" aria-expanded="false" aria-controls="ac-list" aria-autocomplete="list">
+        <ul id="ac-list" class="ac-list" role="listbox" hidden></ul>
+      </div>
+      <div class="field"><label for="f-minp">Min price (₹/kWh)</label><input type="number" id="f-minp" min="0" step="0.5" placeholder="any"></div>
+      <div class="field"><label for="f-maxp">Max price (₹/kWh)</label><input type="number" id="f-maxp" min="0" step="0.5" placeholder="any"></div>
+      <div class="field"><label for="f-rate">Min rating</label>
+        <select id="f-rate"><option value="">any</option><option value="3">3.0+</option><option value="3.5">3.5+</option><option value="4">4.0+</option><option value="4.5">4.5+</option></select></div>
+      <div class="field"><label for="f-conn">Connector</label>
+        <select id="f-conn"><option value="">any</option><option>CCS2</option><option>CHAdeMO</option><option>Type2</option><option>GB/T</option><option>Bharat-AC-001</option><option>Bharat-DC-001</option></select></div>
+      <div class="field"><label for="f-city">City</label>
+        <select id="f-city"><option value="">all cities</option></select></div>
+      <div class="field"><label for="f-sort">Sort by</label>
+        <select id="f-sort"><option value="price_asc">Price, low to high</option><option value="price_desc">Price, high to low</option><option value="rating_desc">Rating</option><option value="free_ports_desc">Free ports</option><option value="distance_asc">Distance from me</option></select></div>
+      <label class="check"><input type="checkbox" id="f-free"> Only with free ports</label>
+    </div>
+    <div class="btnrow" style="margin-top:12px">
+      <button type="button" class="btn primary" id="s-run">Search</button>
+      <button type="button" class="btn" id="s-reset">Clear filters</button>
+      <button type="button" class="btn" id="s-near">Use my location</button>
+      <span class="tag" id="s-where" style="align-self:center"></span>
+    </div>
+    <div id="s-explain" class="explain" hidden></div>
+    <div class="tablewrap" style="margin-top:12px"><table id="s-table" aria-live="polite"></table></div>
+    <div id="s-detail" class="detail" hidden></div>
+  </section>
+
+  <div class="lower">
+    <section class="card" aria-label="Min-Heap playground">
+      <div class="card-head"><h2>Min-Heap, step by step</h2><span class="tag">MinHeap.ts</span></div>
+      <div class="heap-controls">
+        <input type="number" id="heap-in" aria-label="Number to push" placeholder="Number" value="4">
+        <button type="button" class="btn primary" id="heap-push">Push</button>
+        <button type="button" class="btn" id="heap-rand">Random</button>
+        <button type="button" class="btn" id="heap-pop">Pop min</button>
+        <button type="button" class="btn" id="heap-clear">Clear</button>
+      </div>
+      <p class="hint" id="heap-msg" aria-live="polite">Example values loaded. The smallest value is always at index 0.</p>
+      <h3 style="margin-top:14px">Array (index below each value)</h3>
+      <div class="arr" id="heap-arr"></div>
+      <h3>As a tree</h3>
+      <div class="levels" id="heap-tree"></div>
+    </section>
+
+    <section class="card" aria-label="Self-checks">
+      <div class="card-head"><h2>Self-checks</h2><span class="tag">run in your browser, just now</span></div>
+      <div class="sum"><span class="big" id="chk-big"></span><span id="chk-text" class="foot"></span></div>
+      <details><summary>Show every check</summary><div id="chk-list"></div></details>
+      <p class="hint">These are the same checks that become Jest unit tests in <code>server/tests</code>.</p>
+    </section>
+
+    <section class="card" aria-label="Search index">
+      <div class="card-head"><h2>Search index</h2><span class="tag">/api/index/stats</span></div>
+      <div id="idx-body"><p class="empty">Waiting for the backend…</p></div>
+      <div class="btnrow" style="margin-top:12px">
+        <button type="button" class="btn" id="idx-refresh">Refresh</button>
+        <button type="button" class="btn" id="idx-rebalance">Rebalance BSTs</button>
+        <button type="button" class="btn" id="idx-rebuild">Rebuild from database</button>
+      </div>
+      <p class="note" id="idx-note" aria-live="polite"></p>
+      <p class="hint">Rebalance and rebuild need an admin sign-in. Change a port status on a station and watch the free-port counts move.</p>
+    </section>
+
+    <section class="card" aria-label="Module status">
+      <div class="card-head"><h2>Module status</h2><span class="tag" id="status-tag">probing the API</span></div>
+      <ul class="status" id="status-list"></ul>
+      <p class="hint">Each backend row is a real request made just now. Routing runs in your browser until <code>POST /api/routes/plan</code> lands.</p>
+    </section>
+  </div>
+
+  <p class="foot">Distances and times come from a hand-made sample network. Coordinates are map units, not GPS.</p>
+</div>
+<script src="routing.js"></script>
+<script src="api.js"></script>
+<script src="dashboard.js"></script>
+<script src="live.js"></script>
+</body>
+</html>
