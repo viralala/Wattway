@@ -1,15 +1,18 @@
 /**
  * WattWay · Team Kothimbir 🌿
- * RouteMap.tsx — the trip on the Pune backdrop: start (A), destination (B), the
- * direct line, every viable stop numbered by rank, and the chosen stop's route.
+ * RouteMap.tsx — the trip on a Leaflet map of Pune: start (A), destination (B),
+ * the direct line, every viable stop numbered by rank, and the chosen stop's
+ * route. A place search above the map can set the start or the destination.
  */
-import { useMemo } from 'react';
-import { PLACES, type Place } from '../../services/routes';
-import { SAMPLE_STATIONS } from '../../services/stations';
+import { useEffect } from 'react';
+import L from 'leaflet';
+import type { Place } from '../../services/routes';
+import type { GeoResult } from '../../services/geocode';
 import type { Ranked } from '../../utils/route';
-import { makeProjection } from '../../utils/stations';
-import { HEADROOM, PuneBase, smoothPath } from '../stations/PuneBase';
-import { activateOnKey } from '../stations/StationMap';
+import { MapSearch } from '../map/MapSearch';
+import { divMarker, useLeafletMap } from '../map/useLeafletMap';
+
+const ll = (p: { lat: number; lng: number }): L.LatLngTuple => [p.lat, p.lng];
 
 export function RouteMap({
   from,
@@ -17,90 +20,70 @@ export function RouteMap({
   ranked,
   chosenId,
   onChoose,
+  onSearchPick,
 }: {
   from: Place;
   to: Place;
   ranked: Ranked[];
   chosenId: string | null;
   onChoose: (id: string) => void;
+  onSearchPick?: (place: GeoResult, as: 'from' | 'to') => void;
 }) {
-  const proj = useMemo(
-    () => makeProjection([...SAMPLE_STATIONS.map((s) => s.location), ...PLACES, HEADROOM], 0.06),
-    [],
-  );
-  const a = proj.project(from);
-  const b = proj.project(to);
+  const { ref, handle } = useLeafletMap(from);
   const chosen = ranked.find((r) => r.station.id === chosenId);
-  const route = chosen ? smoothPath([a, proj.project(chosen.station.location), b]) : null;
 
-  // Chosen stop drawn last so it sits on top.
-  const ordered = ranked
-    .map((r, i) => ({ r, rank: i + 1 }))
-    .sort((x, y) => Number(x.r.station.id === chosenId) - Number(y.r.station.id === chosenId));
+  useEffect(() => {
+    if (!handle) return;
+    const { layer } = handle;
+    layer.clearLayers();
 
-  const endLabel = (p: { x: number; y: number }, text: string, below: boolean) => (
-    <text
-      className="rt-end-label"
-      y={below ? 5.6 : -3.8}
-      textAnchor={p.x < proj.width * 0.2 ? 'start' : p.x > proj.width * 0.8 ? 'end' : 'middle'}
-    >
-      {text}
-    </text>
-  );
+    L.polyline([ll(from), ll(to)], { color: '#7a6a5a', weight: 2, dashArray: '6 6', opacity: 0.8 }).addTo(layer);
+    if (chosen) {
+      const path = [ll(from), ll(chosen.station.location), ll(to)];
+      L.polyline(path, { color: '#fff', weight: 8, opacity: 0.9 }).addTo(layer);
+      L.polyline(path, { color: '#9c3653', weight: 4 }).addTo(layer);
+    }
+
+    ranked.forEach((r, i) => {
+      const isChosen = r.station.id === chosenId;
+      divMarker(r.station.location, `stop${isChosen ? ' chosen' : ''}`, String(i + 1), isChosen ? 28 : 22)
+        .bindTooltip(`#${i + 1} ${r.station.name} · score ${Math.round(r.score)}`, { className: 'ww-tip', direction: 'top', offset: [0, -12] })
+        .on('click', () => onChoose(r.station.id))
+        .setZIndexOffset(isChosen ? 1000 : 0)
+        .addTo(layer);
+    });
+
+    divMarker(from, 'start', 'A', 26)
+      .bindTooltip(from.label, { className: 'ww-tip', permanent: true, direction: 'bottom', offset: [0, 14] })
+      .setZIndexOffset(2000)
+      .addTo(layer);
+    divMarker(to, 'finish', 'B', 26)
+      .bindTooltip(to.label, { className: 'ww-tip', permanent: true, direction: 'bottom', offset: [0, 14] })
+      .setZIndexOffset(2000)
+      .addTo(layer);
+  }, [handle, from, to, ranked, chosenId, chosen, onChoose]);
+
+  // Re-frame only when the trip itself changes, not on every re-rank.
+  useEffect(() => {
+    handle?.map.fitBounds(L.latLngBounds([ll(from), ll(to)]), { padding: [50, 50], maxZoom: 14 });
+  }, [handle, from.lat, from.lng, to.lat, to.lng]);
 
   return (
-    <svg
-      className="st-map rt-map"
-      viewBox={`0 0 ${proj.width.toFixed(2)} ${proj.height}`}
-      role="group"
-      aria-label={`Route from ${from.label} to ${to.label}${chosen ? ` via ${chosen.station.name}` : ''}`}
-    >
-      <PuneBase proj={proj} />
-
-      <line className="rt-direct" x1={a.x} y1={a.y} x2={b.x} y2={b.y} />
-      {route && (
-        <>
-          <path className="rt-route-casing" d={route} />
-          <path className="rt-route" d={route} />
-        </>
+    <>
+      {onSearchPick && (
+        <MapSearch
+          actions={[
+            { label: 'Start here', onPick: (p) => onSearchPick(p, 'from') },
+            { label: 'Go here', onPick: (p) => onSearchPick(p, 'to') },
+          ]}
+        />
       )}
-
-      {ordered.map(({ r, rank }) => {
-        const { x, y } = proj.project(r.station.location);
-        const isChosen = r.station.id === chosenId;
-        return (
-          <g
-            key={r.station.id}
-            className={`rt-stop${isChosen ? ' chosen' : ''}`}
-            transform={`translate(${x.toFixed(2)} ${y.toFixed(2)})`}
-            role="button"
-            tabIndex={0}
-            aria-pressed={isChosen}
-            aria-label={`Rank ${rank}: ${r.station.name}, score ${Math.round(r.score)}`}
-            onClick={() => onChoose(r.station.id)}
-            onKeyDown={activateOnKey(() => onChoose(r.station.id))}
-          >
-            <title>{`#${rank} ${r.station.name}`}</title>
-            <circle r={isChosen ? 2.6 : 1.9} />
-            <text y={isChosen ? 1 : 0.75}>{rank}</text>
-          </g>
-        );
-      })}
-
-      <g className="rt-end start" transform={`translate(${a.x} ${a.y})`}>
-        <circle r="2.3" />
-        <text className="rt-end-letter" y="0.85">
-          A
-        </text>
-        {endLabel(a, from.label, a.y < b.y ? false : true)}
-      </g>
-      <g className="rt-end finish" transform={`translate(${b.x} ${b.y})`}>
-        <circle r="2.3" />
-        <text className="rt-end-letter" y="0.85">
-          B
-        </text>
-        {endLabel(b, to.label, b.y <= a.y ? false : true)}
-      </g>
-    </svg>
+      <div
+        ref={ref}
+        className="st-map rt-map ww-map"
+        role="region"
+        aria-label={`Route from ${from.label} to ${to.label}${chosen ? ` via ${chosen.station.name}` : ''}`}
+      />
+    </>
   );
 }

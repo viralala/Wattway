@@ -10,6 +10,7 @@ import { useSearchParams } from 'react-router-dom';
 import { RouteMap } from '../components/route/RouteMap';
 import { LinkButton, PageHead, Slider } from '../components/ui';
 import { PLACES, VEHICLES, planRoute, type Place } from '../services/routes';
+import type { GeoResult } from '../services/geocode';
 import { SAMPLE_STATIONS } from '../services/stations';
 import {
   formatMin,
@@ -30,7 +31,6 @@ import '../styles/route.css';
 
 const STATION_PLACES: Place[] = SAMPLE_STATIONS.map((s) => ({ id: s.id, label: s.name, ...s.location }));
 const ALL_PLACES = [...PLACES, ...STATION_PLACES];
-const placeById = (id: string) => ALL_PLACES.find((p) => p.id === id) ?? PLACES[0];
 
 const WEIGHT_LABEL: Record<WeightKey, { label: string; hint: string }> = {
   distance: { label: 'Short detour', hint: 'Extra km versus driving straight there' },
@@ -77,9 +77,27 @@ export default function RoutePlanner() {
   const [weights, setWeights] = useState<Weights>({ distance: 40, wait: 35, price: 25 });
   const [plan, setPlan] = useState<RoutePlan | null>(null);
   const [picked, setPicked] = useState<string | null>(null);
+  // Places found with the map search, so they can sit in the From / To lists.
+  const [searched, setSearched] = useState<Place[]>([]);
 
+  const placeById = (id: string) => [...ALL_PLACES, ...searched].find((p) => p.id === id) ?? PLACES[0];
   const from = placeById(fromId);
   const to = placeById(toId);
+
+  const pickSearched = (place: GeoResult, as: 'from' | 'to') => {
+    setSearched((list) => [{ id: place.id, label: place.label, lat: place.lat, lng: place.lng }, ...list.filter((p) => p.id !== place.id)].slice(0, 5));
+    (as === 'from' ? setFromId : setToId)(place.id);
+  };
+
+  const searchedOptions = searched.length > 0 && (
+    <optgroup label="Searched">
+      {searched.map((p) => (
+        <option key={p.id} value={p.id}>
+          {p.label}
+        </option>
+      ))}
+    </optgroup>
+  );
   const samePlace = fromId === toId;
 
   useEffect(() => {
@@ -128,11 +146,14 @@ export default function RoutePlanner() {
             <div className="field">
               <label htmlFor="rt-from">From</label>
               <select id="rt-from" className="select" value={fromId} onChange={(e) => setFromId(e.target.value)}>
-                {PLACES.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.label}
-                  </option>
-                ))}
+                <optgroup label="Places">
+                  {PLACES.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.label}
+                    </option>
+                  ))}
+                </optgroup>
+                {searchedOptions}
               </select>
             </div>
             <div className="field">
@@ -145,6 +166,7 @@ export default function RoutePlanner() {
                     </option>
                   ))}
                 </optgroup>
+                {searchedOptions}
                 <optgroup label="Stations">
                   {STATION_PLACES.map((p) => (
                     <option key={p.id} value={p.id}>
@@ -361,6 +383,7 @@ export default function RoutePlanner() {
               ranked={samePlace ? [] : ranked}
               chosenId={samePlace ? null : (chosen?.station.id ?? null)}
               onChoose={setPicked}
+              onSearchPick={pickSearched}
             />
           </section>
         </div>

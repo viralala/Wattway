@@ -255,7 +255,7 @@ export default function Stations() {
                   <span className="st-dot home" /> You
                 </li>
               </ul>
-              <StationMap stations={mapStations}selectedId={selectedId} onSelect={(id) => select(id)} />
+              <StationMap stations={mapStations} selectedId={selectedId} onSelect={(id) => select(id)} />
             </div>
             {selected && <StationDetail s={selected} onClose={() => select(null)} />}
           </div>

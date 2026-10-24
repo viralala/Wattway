@@ -1,0 +1,45 @@
+/* WattWay · Team Kothimbir 🌿 — Leaflet maps and the place search over them */
+
+.ww-map {
+  width: 100%; height: 440px; border-radius: var(--radius-sm); border: 2px solid var(--route);
+  background: var(--cream); z-index: 0; /* keep Leaflet's panes under the site header */
+}
+.rt-map.ww-map { height: 400px; }
+@media (max-width: 640px) { .ww-map, .rt-map.ww-map { height: 340px; } }
+
+/* Markers: Leaflet positions the box, these rules draw it. */
+.ww-marker {
+  display: grid; place-items: center; border-radius: 50%; border: 2px solid #fff;
+  box-shadow: 0 1px 4px rgba(31, 58, 42, .45); font: 700 .75rem var(--font-body-strong); color: #fff;
+  transition: transform .15s ease;
+}
+.ww-marker:hover, .ww-marker:focus-visible { transform: scale(1.2); outline: none; }
+.ww-marker.available { background: var(--ok); }
+.ww-marker.full { background: var(--warn); }
+.ww-marker.offline { background: #8a969c; }
+.ww-marker.selected { border-color: var(--plum); border-width: 3px; transform: scale(1.3); z-index: 1000 !important; }
+.ww-marker.home { background: var(--plum); box-shadow: 0 0 0 6px rgba(122, 31, 75, .18); }
+.ww-marker.found { background: var(--bolt, #f5c84c); color: var(--ink); border-color: var(--ink); }
+.ww-marker.stop { background: var(--cream); color: var(--plum); border-color: var(--plum); }
+.ww-marker.stop.chosen { background: var(--plum); color: #fff; border-color: var(--bolt, #f5c84c); }
+.ww-marker.start { background: var(--ok); }
+.ww-marker.finish { background: var(--red); }
+
+.ww-tip { font: 600 .8rem var(--font-body-strong); color: var(--plum); }
+
+/* Search */
+.ww-search { position: relative; margin-bottom: .75rem; }
+.ww-search form { display: flex; gap: .5rem; }
+.ww-search .input { flex: 1; min-width: 0; }
+.ww-search-msg { margin: .5rem 0 0; font-size: .9rem; color: var(--muted, #5b6b62); }
+.ww-search-results {
+  list-style: none; margin: .5rem 0 0; padding: .25rem; display: grid; gap: .25rem;
+  background: #fff; border: 1px solid var(--line); border-radius: var(--radius-sm); box-shadow: var(--shadow);
+  max-height: 260px; overflow-y: auto;
+}
+.ww-search-results li { display: flex; align-items: center; justify-content: space-between; gap: .75rem; padding: .45rem .6rem; border-radius: 8px; }
+.ww-search-results li:hover { background: #f6f1e4; }
+.ww-search-name { display: grid; min-width: 0; }
+.ww-search-name small { color: var(--muted, #5b6b62); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ww-search-actions { display: flex; gap: .35rem; flex-shrink: 0; }
+@media (max-width: 480px) { .ww-search-results li { flex-direction: column; align-items: stretch; } }
