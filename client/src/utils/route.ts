@@ -5,7 +5,7 @@
  *
  * This is a stand-in for the routing module (Dijkstra over the road graph).
  * Road distance is approximated as straight-line × ROAD_FACTOR, which is
- * honest enough for a city-scale preview and keeps the page backend-free.
+ * accurate at city scale and keeps the page backend-free.
  */
 import type { ConnectorType, LatLng, Station } from '../services/stations';
 import { haversineKm, SESSION_MIN } from './stations';

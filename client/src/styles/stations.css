@@ -1,6 +1,5 @@
 /* WattWay · Team Kothimbir 🌿 — Station map */
 
-.st-sample { margin: 0 0 1rem; max-width: 62ch; }
 
 .st-filters {
   display: grid; gap: 1rem 1.25rem; align-items: end;
@@ -23,30 +22,6 @@
 .st-dot.full { background: var(--warn); }
 .st-dot.offline { background: #8a969c; }
 .st-dot.home { background: var(--plum); }
-
-.st-map { display: block; width: 100%; height: auto; border-radius: var(--radius-sm); border: 2px solid var(--route); background: var(--cream); }
-.st-map-bg { fill: #f7f0d8; }
-.st-river { fill: none; stroke: var(--water); stroke-width: 1.6; stroke-linecap: round; }
-.st-road { fill: none; stroke: var(--route); stroke-width: .45; stroke-dasharray: 1.4 1.1; stroke-linecap: round; opacity: .85; }
-
-.st-home circle { fill: var(--plum); stroke: #fff; stroke-width: .35; }
-.st-home .st-home-halo { fill: rgba(122, 31, 75, .16); stroke: none; }
-.st-home text { font: 700 2.8px var(--font-body-strong); fill: var(--plum); text-anchor: middle; paint-order: stroke; stroke: #f7f0d8; stroke-width: .6; }
-
-.st-pin { cursor: pointer; outline: none; }
-.st-pin-shape { transform: scale(1.3); transition: transform .15s ease; }
-.st-pin path { stroke: #fff; stroke-width: .35; filter: drop-shadow(0 .3px .4px rgba(31, 58, 42, .45)); }
-.st-pin-dot { fill: #fff; }
-.st-pin.available path { fill: var(--ok); }
-.st-pin.full path { fill: var(--warn); }
-.st-pin.offline path { fill: #8a969c; }
-.st-pin:hover .st-pin-shape, .st-pin:focus-visible .st-pin-shape { transform: scale(1.6); }
-.st-pin.selected .st-pin-shape { transform: scale(1.8); }
-.st-pin.selected path, .st-pin:focus-visible path { stroke: var(--plum); stroke-width: .5; }
-.st-pin-label {
-  font: 700 3.2px var(--font-body-strong); fill: var(--ink);
-  paint-order: stroke; stroke: #f7f0d8; stroke-width: .8; stroke-linejoin: round; pointer-events: none;
-}
 
 /* ── List ── */
 .st-list { list-style: none; margin: 0; padding: 0; display: grid; gap: .6rem; max-height: min(78vh, 760px); overflow-y: auto; padding-right: .25rem; }
