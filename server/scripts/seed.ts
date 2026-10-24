@@ -481,8 +481,9 @@ const USERS = [
   },
 ];
 
-async function seed(): Promise<void> {
-  const fresh = process.argv.includes('--fresh');
+export async function seed(options: { fresh?: boolean; disconnect?: boolean } = {}): Promise<void> {
+  const fresh = options.fresh ?? process.argv.includes('--fresh');
+  const disconnect = options.disconnect ?? true;
 
   await connectDatabase();
 
@@ -589,10 +590,13 @@ async function seed(): Promise<void> {
     ].join('\n'),
   );
 
-  await disconnectDatabase();
+  if (disconnect) await disconnectDatabase();
 }
 
-seed().catch((error: unknown) => {
-  logger.error('Seed failed', error);
-  process.exit(1);
-});
+// Only run when invoked directly (`npm run seed`), not when imported by demo.ts.
+if (require.main === module) {
+  seed().catch((error: unknown) => {
+    logger.error('Seed failed', error);
+    process.exit(1);
+  });
+}

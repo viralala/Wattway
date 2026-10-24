@@ -406,6 +406,44 @@ See [`API.md`](API.md#queue--apiqueue) for request and response shapes.
 
 ---
 
+## Graph + Min-Heap — the Algorithm Lab and battery-aware A*
+
+Code: `server/src/algorithms/lab/`. The Lab owns a small adjacency-list graph
+(`graph.ts`, seeded and reproducible) and an array-backed binary min-heap
+(`MinHeap.ts`, lazy deletion), so it runs with no database.
+
+| Algorithm | File | Idea | Complexity |
+| --- | --- | --- | --- |
+| Dijkstra | `pathfinding.ts` | Pop the cheapest unsettled node from the heap, relax its edges | O((V+E) log V) |
+| A* | `pathfinding.ts` | Dijkstra ordered by g + h, h = straight-line km × cheapest cost/km (admissible) | same worst case, far fewer pops |
+| Weighted A* | `pathfinding.ts` | g + w·h with w > 1: faster, no longer guaranteed optimal | — |
+| Bellman-Ford | `pathfinding.ts` | Relax every edge V−1 times; handles regen's negative edges | O(V·E) |
+| Floyd-Warshall | `pathfinding.ts` | All-pairs DP over pivot k | O(V³) |
+| Held-Karp / nearest-neighbour | `tsp.ts` | Multi-stop tour, exact DP vs greedy | O(k²·2ᵏ) / O(k²) |
+| **Battery-aware A\*** | `evRoute.ts` | A* over (node, battery) states with charging moves | O((S + E·B) log S), S = V·(B+1) |
+
+### Battery-aware A* — `POST /api/algorithms/ev-route`
+
+Plain A* finds the shortest road; an EV needs the fastest road it can actually
+finish. The search runs over **states** `(node, battery bucket)`:
+
+- **Drive** an edge: time = km ÷ speed, battery −= edge energy (regen on a
+  descent can add charge, capped at full). Moves that would drop below the
+  reserve are not generated.
+- **Charge one bucket** (charger nodes only): time = bucket ÷ charge rate.
+  Charging one bucket at a time lets the search choose *how much* to charge,
+  so partial top-ups come out naturally.
+
+The heuristic is straight-line km ÷ speed. Roads are never shorter than the
+straight line and charging only adds time, so it is admissible and
+consistent: the first time the goal is popped, the plan is the fastest.
+Energy used is rounded up to a bucket and energy regained rounded down, so a
+plan never needs more charge than the car has.
+
+The response gives the path, each charge stop (arrive % → depart %, minutes),
+drive/charge/total minutes, arrival charge and the states explored. Chargers
+default to a seeded ~20 % of nodes, or pass `stations`.
+
 ## Reserved for the other modules
 
 The barrels in `server/src/datastructures/index.ts` and

@@ -12,6 +12,7 @@
     "build": "tsc -p tsconfig.build.json",
     "start": "node dist/server.js",
     "seed": "tsx scripts/seed.ts",
+    "demo": "tsx scripts/demo.ts",
     "test": "cross-env NODE_ENV=test jest --runInBand",
     "test:watch": "cross-env NODE_ENV=test jest --watch --runInBand",
     "test:ds": "cross-env NODE_ENV=test jest tests/datastructures --runInBand",

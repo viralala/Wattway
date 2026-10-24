@@ -117,3 +117,21 @@ describe('POST /api/algorithms/benchmark', () => {
     expect((await request(app).post('/api/algorithms/benchmark').send({ sizes: [10000] })).status).toBe(422);
   });
 });
+
+describe('POST /api/algorithms/ev-route', () => {
+  it('plans a battery-aware route with the charger list it used', async () => {
+    const res = await request(app)
+      .post('/api/algorithms/ev-route')
+      .send({ nodes: 40, seed: 1, start: 'n0', end: 'n39', capacity: 15, startCharge: 0.6 });
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(Array.isArray(res.body.data.stations)).toBe(true);
+    expect(res.body.data).toHaveProperty('chargeStops');
+    if (res.body.data.reachable) expect(res.body.data.path[0]).toBe('n0');
+  });
+
+  it('rejects a node outside the graph', async () => {
+    const res = await request(app).post('/api/algorithms/ev-route').send({ nodes: 10, start: 'n0', end: 'n99' });
+    expect(res.status).toBe(422);
+  });
+});
