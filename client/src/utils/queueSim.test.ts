@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { SAMPLE_STATIONS, type Station } from '../services/stations';
+import { STATIONS, type Station } from '../services/stations';
 import {
   checkIn,
   clockLabel,
@@ -15,7 +15,7 @@ import {
 } from './queueSim';
 import { SESSION_MIN } from './stations';
 
-const station = (id: string) => SAMPLE_STATIONS.find((s) => s.id === id) as Station;
+const station = (id: string) => STATIONS.find((s) => s.id === id) as Station;
 const run = (s: SimState, n: number) => Array.from({ length: n }).reduce<SimState>((acc) => tick(acc), s);
 /** Tick until `done(state)` or give up. */
 function until(s: SimState, done: (s: SimState) => boolean, max = 2000): SimState {

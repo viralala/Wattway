@@ -4,7 +4,7 @@
  *
  * HARDCODED for now: planning belongs to the routing module (`POST
  * /api/routes/plan`, Graph + Min-Heap). `planRoute` computes the same shape
- * locally from the sample stations; swap its body for
+ * locally from the station list; swap its body for
  *
  *   request<RoutePlan>('/api/routes/plan', { method: 'POST', body: JSON.stringify(input) })
  *
@@ -13,7 +13,7 @@
  * round trip.
  */
 import { planTrip, type RoutePlan, type TripInput, type Vehicle } from '../utils/route';
-import { HOME, SAMPLE_STATIONS, type LatLng } from './stations';
+import { HOME, STATIONS, type LatLng } from './stations';
 
 export interface Place extends LatLng {
   id: string;
@@ -38,5 +38,5 @@ export const VEHICLES: Vehicle[] = [
 ];
 
 export async function planRoute(input: TripInput): Promise<RoutePlan> {
-  return planTrip(SAMPLE_STATIONS, input);
+  return planTrip(STATIONS, input);
 }

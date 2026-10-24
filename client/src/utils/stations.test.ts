@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { HOME, SAMPLE_STATIONS, listStations, type Station } from '../services/stations';
+import { HOME, STATIONS, listStations, type Station } from '../services/stations';
 import {
   availability,
   estimatedWait,
@@ -12,11 +12,11 @@ import {
 } from './stations';
 
 const ANY: StationFilters = { text: '', connector: 'any', maxPrice: Infinity, freeOnly: false, sort: 'nearest' };
-const byId = (id: string) => SAMPLE_STATIONS.find((s) => s.id === id) as Station;
+const byId = (id: string) => STATIONS.find((s) => s.id === id) as Station;
 
 describe('sample stations', () => {
   it('derive totalPorts, freePorts and connectorTypes from the port board', () => {
-    for (const s of SAMPLE_STATIONS) {
+    for (const s of STATIONS) {
       expect(s.totalPorts).toBe(s.ports.length);
       expect(s.freePorts).toBe(s.ports.filter((p) => p.status === 'free').length);
       expect(new Set(s.connectorTypes)).toEqual(new Set(s.ports.map((p) => p.connectorType)));
@@ -63,13 +63,13 @@ describe('availability and wait', () => {
 
 describe('filterStations', () => {
   it('sorts nearest first by default', () => {
-    const r = filterStations(SAMPLE_STATIONS, ANY, HOME);
-    expect(r).toHaveLength(SAMPLE_STATIONS.length);
+    const r = filterStations(STATIONS, ANY, HOME);
+    expect(r).toHaveLength(STATIONS.length);
     for (let i = 1; i < r.length; i += 1) expect(r[i].distanceKm).toBeGreaterThanOrEqual(r[i - 1].distanceKm);
   });
 
   it('applies connector, price and free-port filters together', () => {
-    const r = filterStations(SAMPLE_STATIONS, { ...ANY, connector: 'CCS2', maxPrice: 19, freeOnly: true }, HOME);
+    const r = filterStations(STATIONS, { ...ANY, connector: 'CCS2', maxPrice: 19, freeOnly: true }, HOME);
     expect(r.length).toBeGreaterThan(0);
     for (const s of r) {
       expect(s.connectorTypes).toContain('CCS2');
@@ -79,23 +79,23 @@ describe('filterStations', () => {
   });
 
   it('matches text against name, locality and operator, case-insensitively', () => {
-    expect(filterStations(SAMPLE_STATIONS, { ...ANY, text: 'KOTHRUD' }, HOME).map((s) => s.id)).toEqual(['st-09']);
-    expect(filterStations(SAMPLE_STATIONS, { ...ANY, text: 'voltvan' }, HOME).every((s) => s.operator === 'VoltVan')).toBe(true);
+    expect(filterStations(STATIONS, { ...ANY, text: 'KOTHRUD' }, HOME).map((s) => s.id)).toEqual(['st-09']);
+    expect(filterStations(STATIONS, { ...ANY, text: 'voltvan' }, HOME).every((s) => s.operator === 'VoltVan')).toBe(true);
   });
 
   it('sorts by price, rating and wait', () => {
-    const cheap = filterStations(SAMPLE_STATIONS, { ...ANY, sort: 'cheapest' }, HOME);
-    expect(cheap[0].pricePerKwh).toBe(Math.min(...SAMPLE_STATIONS.map((s) => s.pricePerKwh)));
-    const rated = filterStations(SAMPLE_STATIONS, { ...ANY, sort: 'rating' }, HOME);
-    expect(rated[0].rating).toBe(Math.max(...SAMPLE_STATIONS.map((s) => s.rating)));
-    const queue = filterStations(SAMPLE_STATIONS, { ...ANY, sort: 'queue' }, HOME);
+    const cheap = filterStations(STATIONS, { ...ANY, sort: 'cheapest' }, HOME);
+    expect(cheap[0].pricePerKwh).toBe(Math.min(...STATIONS.map((s) => s.pricePerKwh)));
+    const rated = filterStations(STATIONS, { ...ANY, sort: 'rating' }, HOME);
+    expect(rated[0].rating).toBe(Math.max(...STATIONS.map((s) => s.rating)));
+    const queue = filterStations(STATIONS, { ...ANY, sort: 'queue' }, HOME);
     expect(queue[queue.length - 1].availability).toBe('offline');
   });
 });
 
 describe('makeProjection', () => {
   it('fits every point inside the box with north up', () => {
-    const pts = SAMPLE_STATIONS.map((s) => s.location);
+    const pts = STATIONS.map((s) => s.location);
     const proj = makeProjection(pts);
     for (const p of pts) {
       const { x, y } = proj.project(p);

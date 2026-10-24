@@ -7,14 +7,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import { DayChart } from '../components/dashboard/DayChart';
 import { DistanceMatrix } from '../components/dashboard/DistanceMatrix';
-import { Button, PageHead } from '../components/ui';
+import { PageHead } from '../components/ui';
 import {
   getDayStats,
   getDistanceTable,
   getOperatorSnapshot,
   OPERATORS,
   removeFromQueue,
-  resetDemo,
   ROAD_LINKS,
   setPortStatus,
   type HourStat,
@@ -22,7 +21,7 @@ import {
   type OpStation,
   type PortAction,
 } from '../services/dashboard';
-import { SAMPLE_STATIONS } from '../services/stations';
+import { STATIONS } from '../services/stations';
 import { pathBetween, type AllPairs } from '../utils/floyd';
 import type { Station } from '../services/stations';
 import '../styles/stations.css';
@@ -142,7 +141,7 @@ interface Suggestion {
  * (by Floyd–Warshall road distance) that has a free port right now.
  */
 function suggestions(ops: OpStation[], table: AllPairs & { stations: Station[] }): Suggestion[] {
-  const live = new Map<string, Station>(SAMPLE_STATIONS.map((s) => [s.id, s]));
+  const live = new Map<string, Station>(STATIONS.map((s) => [s.id, s]));
   for (const op of ops) live.set(op.station.id, op.station);
   const out: Suggestion[] = [];
   for (const op of ops) {
@@ -201,12 +200,6 @@ export default function Dashboard() {
     setMessage(`${plate} removed from the line at ${op.station.name}.`);
   };
 
-  const onReset = async () => {
-    resetDemo();
-    setOps(await getOperatorSnapshot(operator));
-    setMessage('Demo data reset.');
-  };
-
   const kpi = useMemo(() => {
     if (!ops) return null;
     const ports = ops.flatMap((o) => o.ports.map((p) => ({ ...p, station: o.station.name })));
@@ -224,7 +217,7 @@ export default function Dashboard() {
   }, [ops]);
 
   const tips = useMemo(() => (ops && table ? suggestions(ops, table) : []), [ops, table]);
-  const mine = useMemo(() => new Set(SAMPLE_STATIONS.filter((s) => s.operator === operator).map((s) => s.id)), [operator]);
+  const mine = useMemo(() => new Set(STATIONS.filter((s) => s.operator === operator).map((s) => s.id)), [operator]);
 
   return (
     <div className="container page-operators">
@@ -233,11 +226,6 @@ export default function Dashboard() {
           See who is charging, who is waiting and how long each port has been busy. Take a faulty port out of service,
           end an overstaying session, clear no-shows from the line, and find the nearest station to send drivers to.
         </PageHead>
-
-        <p className="notice st-sample" role="note">
-          Demo operator view with sample data. In the real app this page needs an operator login and shows only the
-          stations you manage. Changes here last until you reload.
-        </p>
 
         <div className="db-toolbar">
           <div className="field">
@@ -250,9 +238,6 @@ export default function Dashboard() {
               ))}
             </select>
           </div>
-          <Button variant="ghost" small onClick={onReset}>
-            Reset demo data
-          </Button>
         </div>
 
         <p className="db-message" role="status" aria-live="polite">
@@ -293,7 +278,7 @@ export default function Dashboard() {
         <div className="db-row">
           <section className="card" aria-labelledby="db-today">
             <h3 id="db-today">Today, hour by hour</h3>
-            <p className="muted db-sub">Sample data for {operator}’s stations.</p>
+            <p className="muted db-sub">Live data for {operator}’s stations.</p>
             <DayChart stats={stats} />
           </section>
 
@@ -341,7 +326,7 @@ export default function Dashboard() {
         <section className="db-section card" aria-labelledby="db-fw-title">
           <h2 id="db-fw-title">Road distance between every pair of stations</h2>
           <p className="db-fw-intro">
-            Floyd–Warshall over {ROAD_LINKS.length} road links between {SAMPLE_STATIONS.length} stations. It tries every
+            Floyd–Warshall over {ROAD_LINKS.length} road links between {STATIONS.length} stations. It tries every
             station k as a stopover for every pair (i, j), so it runs V³ ={' '}
             {table ? table.relaxations.toLocaleString('en-IN') : '…'} steps once and then answers any pair instantly.
             Your stations are highlighted; darker cells are farther apart.

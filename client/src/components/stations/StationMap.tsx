@@ -5,7 +5,7 @@
  */
 import { useEffect, useState, type KeyboardEvent } from 'react';
 import L from 'leaflet';
-import { HOME, SAMPLE_STATIONS } from '../../services/stations';
+import { HOME, STATIONS } from '../../services/stations';
 import type { GeoResult } from '../../services/geocode';
 import type { StationView } from '../../utils/stations';
 import { MapSearch } from '../map/MapSearch';
@@ -21,8 +21,8 @@ export const activateOnKey = (fn: () => void) => (e: KeyboardEvent) => {
   }
 };
 
-/** Every sample station plus home, so the first view frames them all. */
-const ALL_POINTS = L.latLngBounds([...SAMPLE_STATIONS.map((s) => s.location), HOME].map((p) => [p.lat, p.lng]));
+/** Every station plus home, so the first view frames them all. */
+const ALL_POINTS = L.latLngBounds([...STATIONS.map((s) => s.location), HOME].map((p) => [p.lat, p.lng]));
 
 export function StationMap({
   stations,

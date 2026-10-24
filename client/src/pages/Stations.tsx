@@ -161,11 +161,6 @@ export default function Stations() {
           card to open the station’s port board.
         </PageHead>
 
-        <p className="notice st-sample" role="note">
-          Sample data: 15 fictional stations at real Pune localities. Live numbers arrive once the stations API is
-          connected.
-        </p>
-
         <section className="card st-filters" aria-label="Filter stations">
           <div className="field">
             <label htmlFor="st-text">Search</label>

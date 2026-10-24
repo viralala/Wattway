@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { PLACES, VEHICLES } from '../services/routes';
-import { SAMPLE_STATIONS, type Station } from '../services/stations';
+import { STATIONS, type Station } from '../services/stations';
 import {
   CHARGE_TO,
   formatMin,
@@ -49,13 +49,13 @@ describe('rebalance', () => {
 
 describe('planTrip', () => {
   it('needs a stop on low charge and none on a full battery', () => {
-    expect(planTrip(SAMPLE_STATIONS, trip()).needsStop).toBe(true);
-    expect(planTrip(SAMPLE_STATIONS, trip({ batteryPct: 100 })).needsStop).toBe(false);
+    expect(planTrip(STATIONS, trip()).needsStop).toBe(true);
+    expect(planTrip(STATIONS, trip({ batteryPct: 100 })).needsStop).toBe(false);
   });
 
   it('only offers stops that are reachable, within the detour, and lead to the destination', () => {
     const t = trip();
-    const plan = planTrip(SAMPLE_STATIONS, t);
+    const plan = planTrip(STATIONS, t);
     expect(plan.candidates.length).toBeGreaterThan(0);
     for (const c of plan.candidates) {
       expect(c.arrivePct).toBeGreaterThanOrEqual(RESERVE * 100);
@@ -66,26 +66,26 @@ describe('planTrip', () => {
   });
 
   it('accounts for every station exactly once', () => {
-    const plan = planTrip(SAMPLE_STATIONS, trip());
+    const plan = planTrip(STATIONS, trip());
     const out = Object.values(plan.excluded).reduce((a, b) => a + b, 0);
-    expect(plan.candidates.length + out).toBe(SAMPLE_STATIONS.length);
+    expect(plan.candidates.length + out).toBe(STATIONS.length);
   });
 
   it('rules out stations without a compatible plug', () => {
-    const plan = planTrip(SAMPLE_STATIONS, trip({ vehicle: vehicle('scooter'), batteryPct: 100, maxDetourKm: 20 }));
+    const plan = planTrip(STATIONS, trip({ vehicle: vehicle('scooter'), batteryPct: 100, maxDetourKm: 20 }));
     expect(plan.excluded.connector).toBeGreaterThan(0);
     expect(plan.candidates.every((c) => c.station.connectorTypes.some((t) => ['Type2', 'Bharat-AC-001'].includes(t)))).toBe(true);
   });
 
   it('charges up to 80% and prices the energy at the station rate', () => {
-    const c = planTrip(SAMPLE_STATIONS, trip()).candidates[0];
+    const c = planTrip(STATIONS, trip()).candidates[0];
     expect(c.chargeKwh).toBeCloseTo(((CHARGE_TO * 100 - c.arrivePct) / 100) * 30, 6);
     expect(c.chargeCost).toBeCloseTo(c.chargeKwh * c.station.pricePerKwh, 6);
   });
 
   it('a tighter detour limit never adds candidates', () => {
-    const wide = planTrip(SAMPLE_STATIONS, trip({ maxDetourKm: 20 })).candidates.length;
-    const tight = planTrip(SAMPLE_STATIONS, trip({ maxDetourKm: 1 })).candidates.length;
+    const wide = planTrip(STATIONS, trip({ maxDetourKm: 20 })).candidates.length;
+    const tight = planTrip(STATIONS, trip({ maxDetourKm: 1 })).candidates.length;
     expect(tight).toBeLessThanOrEqual(wide);
   });
 
@@ -97,7 +97,7 @@ describe('planTrip', () => {
 describe('rankCandidates', () => {
   const fake = (id: string, detourKm: number, waitMin: number, price: number): Candidate =>
     ({
-      station: { ...(SAMPLE_STATIONS[0] as Station), id, pricePerKwh: price },
+      station: { ...(STATIONS[0] as Station), id, pricePerKwh: price },
       detourKm,
       waitMin,
       tripMin: 0,

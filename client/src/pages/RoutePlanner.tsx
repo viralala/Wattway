@@ -11,13 +11,12 @@ import { RouteMap } from '../components/route/RouteMap';
 import { LinkButton, PageHead, Slider } from '../components/ui';
 import { PLACES, VEHICLES, planRoute, type Place } from '../services/routes';
 import type { GeoResult } from '../services/geocode';
-import { SAMPLE_STATIONS } from '../services/stations';
+import { STATIONS } from '../services/stations';
 import {
   formatMin,
   rankCandidates,
   rebalance,
   RESERVE,
-  ROAD_FACTOR,
   WEIGHT_KEYS,
   type Exclusion,
   type Ranked,
@@ -29,7 +28,7 @@ import { formatWait } from '../utils/stations';
 import '../styles/stations.css';
 import '../styles/route.css';
 
-const STATION_PLACES: Place[] = SAMPLE_STATIONS.map((s) => ({ id: s.id, label: s.name, ...s.location }));
+const STATION_PLACES: Place[] = STATIONS.map((s) => ({ id: s.id, label: s.name, ...s.location }));
 const ALL_PLACES = [...PLACES, ...STATION_PLACES];
 
 const WEIGHT_LABEL: Record<WeightKey, { label: string; hint: string }> = {
@@ -132,11 +131,6 @@ export default function RoutePlanner() {
           Tell WattWay where you’re going and how much charge you have. It works out whether you need a stop and ranks
           every station you can actually reach by detour, wait and price, weighted the way you choose.
         </PageHead>
-
-        <p className="notice st-sample" role="note">
-          Preview: road distance is estimated as straight-line × {ROAD_FACTOR}, over the sample stations. Real routing
-          (Dijkstra on the road graph) arrives with the routing module.
-        </p>
       </div>
 
       <div className="band cream">

@@ -5,11 +5,11 @@ import {
   getOperatorSnapshot,
   OPERATORS,
   removeFromQueue,
-  resetDemo,
+  resetData,
   ROAD_LINKS,
   setPortStatus,
 } from '../services/dashboard';
-import { SAMPLE_STATIONS } from '../services/stations';
+import { STATIONS } from '../services/stations';
 import { floydWarshall, pathBetween, type Edge } from './floyd';
 
 // A─1─B─1─C, plus a long direct A─C road that the path through B beats.
@@ -53,7 +53,7 @@ describe('the station distance table', () => {
   it('connects every station and obeys the triangle inequality', async () => {
     const t = await getDistanceTable();
     const n = t.ids.length;
-    expect(n).toBe(SAMPLE_STATIONS.length);
+    expect(n).toBe(STATIONS.length);
     for (let i = 0; i < n; i += 1)
       for (let j = 0; j < n; j += 1) {
         expect(Number.isFinite(t.dist[i][j])).toBe(true);
@@ -73,7 +73,7 @@ describe('the station distance table', () => {
 });
 
 describe('operator snapshot and actions', () => {
-  beforeEach(() => resetDemo());
+  beforeEach(() => resetData());
 
   it('lists each operator’s own stations with consistent counts', async () => {
     for (const op of OPERATORS) {

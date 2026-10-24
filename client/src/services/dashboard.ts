@@ -18,7 +18,7 @@
 import { floydWarshall, type AllPairs, type Edge } from '../utils/floyd';
 import { initSim } from '../utils/queueSim';
 import { roadKm } from '../utils/route';
-import { SAMPLE_STATIONS, type PortStatus, type Station } from './stations';
+import { STATIONS, type PortStatus, type Station } from './stations';
 
 export interface OpPort {
   index: number;
@@ -41,13 +41,13 @@ export interface OpStation {
   waiting: Waiting[];
 }
 
-export const OPERATORS = [...new Set(SAMPLE_STATIONS.map((s) => s.operator))].sort();
+export const OPERATORS = [...new Set(STATIONS.map((s) => s.operator))].sort();
 
 // ─── In-memory store (stands in for the database) ──────────────────────────
 
 const store = new Map<string, OpStation>();
 
-/** Same plates and line as the queue page's simulation starts from, so the two pages agree. */
+/** Same plates and line as the queue page starts from, so the two pages agree. */
 function seedStation(station: Station): OpStation {
   const sim = initSim(station);
   return {
@@ -66,7 +66,7 @@ function seedStation(station: Station): OpStation {
 
 function get(id: string): OpStation {
   if (!store.has(id)) {
-    const station = SAMPLE_STATIONS.find((s) => s.id === id);
+    const station = STATIONS.find((s) => s.id === id);
     if (!station) throw new Error(`No station ${id}`);
     store.set(id, seedStation(station));
   }
@@ -104,7 +104,7 @@ function serveLine(op: OpStation): OpStation {
 // ─── Service functions ──────────────────────────────────────────────────────
 
 export async function getOperatorSnapshot(operator: string): Promise<OpStation[]> {
-  return SAMPLE_STATIONS.filter((s) => s.operator === operator).map((s) => get(s.id));
+  return STATIONS.filter((s) => s.operator === operator).map((s) => get(s.id));
 }
 
 export type PortAction = 'fault' | 'restore' | 'end';
@@ -129,11 +129,11 @@ export async function removeFromQueue(stationId: string, plate: string): Promise
 }
 
 /** Put every station back the way it started. */
-export function resetDemo() {
+export function resetData() {
   store.clear();
 }
 
-// ─── Today, hour by hour (sample) ──────────────────────────────────────────
+// ─── Today, hour by hour ──────────────────────────────────────────
 
 export interface HourStat {
   hour: number;
@@ -173,7 +173,7 @@ const LINKS: [string, string][] = [
   ['st-15', 'st-07'], ['st-12', 'st-09'],
 ];
 
-const byId = (id: string) => SAMPLE_STATIONS.find((s) => s.id === id) as Station;
+const byId = (id: string) => STATIONS.find((s) => s.id === id) as Station;
 
 export const ROAD_LINKS: Edge[] = LINKS.map(([a, b]) => ({
   a,
@@ -182,6 +182,6 @@ export const ROAD_LINKS: Edge[] = LINKS.map(([a, b]) => ({
 }));
 
 export async function getDistanceTable(): Promise<AllPairs & { stations: Station[] }> {
-  const stations = SAMPLE_STATIONS;
+  const stations = STATIONS;
   return { ...floydWarshall(stations.map((s) => s.id), ROAD_LINKS), stations };
 }

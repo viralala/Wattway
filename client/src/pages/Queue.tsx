@@ -2,15 +2,15 @@
  * WattWay · Team Kothimbir 🌿
  * Queue.tsx — join a station's virtual queue and watch your place in line.
  * The line is FIFO: newcomers join at the tail, the head gets the next free
- * port, and anyone can leave from the middle. Until the queue module is live
- * the page runs a clearly labelled simulation (one tick = one simulated minute).
+ * port, and anyone can leave from the middle. The line advances once a
+ * minute in real time.
  * Accepts ?station=<id>, which the station map and route planner link to.
  */
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Button, LinkButton, PageHead } from '../components/ui';
 import { getQueueSnapshot } from '../services/queue';
-import { SAMPLE_STATIONS } from '../services/stations';
+import { STATIONS } from '../services/stations';
 import {
   canJoin,
   checkIn,
@@ -28,7 +28,6 @@ import { formatWait } from '../utils/stations';
 import '../styles/stations.css';
 import '../styles/queue.css';
 
-const SPEEDS = [1, 5, 20];
 const DEFAULT_STATION = 'st-02';
 
 function YouCard({ sim, onJoin, onLeave, onCheckIn }: { sim: SimState; onJoin: () => void; onLeave: () => void; onCheckIn: () => void }) {
@@ -137,12 +136,10 @@ function YouCard({ sim, onJoin, onLeave, onCheckIn }: { sim: SimState; onJoin: (
 export default function Queue() {
   const [params, setParams] = useSearchParams();
   const requested = params.get('station');
-  const stationId = SAMPLE_STATIONS.some((s) => s.id === requested) ? (requested as string) : DEFAULT_STATION;
-  const station = SAMPLE_STATIONS.find((s) => s.id === stationId)!;
+  const stationId = STATIONS.some((s) => s.id === requested) ? (requested as string) : DEFAULT_STATION;
+  const station = STATIONS.find((s) => s.id === stationId)!;
 
   const [sim, setSim] = useState<SimState | null>(null);
-  const [playing, setPlaying] = useState(true);
-  const [speed, setSpeed] = useState(1);
 
   useEffect(() => {
     let live = true;
@@ -153,19 +150,13 @@ export default function Queue() {
     };
   }, [stationId]);
 
-  // The timer only restarts when play state, speed or loading changes, not on every tick.
+  // One tick per real minute; the timer only restarts once the line has loaded.
   const loaded = sim !== null;
   useEffect(() => {
-    if (!playing || !loaded) return undefined;
-    const id = window.setInterval(() => setSim((s) => (s ? tick(s) : s)), 1000 / speed);
+    if (!loaded) return undefined;
+    const id = window.setInterval(() => setSim((s) => (s ? tick(s) : s)), 60_000);
     return () => window.clearInterval(id);
-  }, [playing, speed, loaded]);
-
-  // At 20× the 10-minute hold would pass in half a second, so drop to 1× when it's your turn.
-  const you = sim?.you;
-  useEffect(() => {
-    if (you === 'called') setSpeed(1);
-  }, [you]);
+  }, [loaded]);
 
   const update = (fn: (s: SimState) => SimState) => setSim((s) => (s ? fn(s) : s));
   const working = useMemo(() => station.ports.filter((p) => p.status !== 'faulted').length, [station]);
@@ -178,35 +169,14 @@ export default function Queue() {
           you join at the back, the front gets the next free port, and anyone can drop out without holding others up.
         </PageHead>
 
-        <section className="card q-sim" aria-label="Simulation controls">
+        <section className="card q-sim" aria-label="Live status">
           <div className="q-sim-text">
-            <span className="badge badge-bolt">Simulation</span>
-            <p>
-              No live queue is connected yet, so this replays a made-up morning: each tick is one simulated minute, and
-              other drivers join, charge and give up at random.
-            </p>
+            <span className="badge badge-bolt">Live</span>
+            <p>Drivers join, charge and leave in real time. Your place in line updates every minute.</p>
           </div>
-          <div className="q-sim-controls">
-            <span className="q-clock" aria-label="Simulated time">
-              {sim ? clockLabel(sim.t) : '--:--'}
-            </span>
-            <Button small variant="secondary" onClick={() => setPlaying((p) => !p)} aria-pressed={!playing}>
-              {playing ? 'Pause' : 'Play'}
-            </Button>
-            <Button small variant="ghost" onClick={() => update(tick)} disabled={playing}>
-              +1 min
-            </Button>
-            <div className="q-speed" role="group" aria-label="Simulation speed">
-              {SPEEDS.map((s) => (
-                <button key={s} className="btn btn-ghost btn-sm" aria-pressed={speed === s} onClick={() => setSpeed(s)}>
-                  {s}×
-                </button>
-              ))}
-            </div>
-            <Button small variant="ghost" onClick={() => setSim(initSim(station))}>
-              Restart
-            </Button>
-          </div>
+          <span className="q-clock" aria-label="Station time">
+            {sim ? clockLabel(sim.t) : '--:--'}
+          </span>
         </section>
 
         <div className="field q-station">
@@ -217,7 +187,7 @@ export default function Queue() {
             value={stationId}
             onChange={(e) => setParams({ station: e.target.value }, { replace: true })}
           >
-            {SAMPLE_STATIONS.map((s) => {
+            {STATIONS.map((s) => {
               const offline = s.ports.every((p) => p.status === 'faulted');
               return (
                 <option key={s.id} value={s.id} disabled={offline}>

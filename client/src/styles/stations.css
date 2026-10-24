@@ -1,6 +1,5 @@
 /* WattWay · Team Kothimbir 🌿 — Station map */
 
-.st-sample { margin: 0 0 1rem; max-width: 62ch; }
 
 .st-filters {
   display: grid; gap: 1rem 1.25rem; align-items: end;

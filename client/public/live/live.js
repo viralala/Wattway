@@ -58,7 +58,7 @@
         '<input type="password" id="lg-pass" placeholder="password" autocomplete="current-password" required>' +
         '<button type="submit" class="btn primary">Sign in</button></form>' +
         '<p class="note" id="auth-note" aria-live="polite"></p>' +
-        '<p class="hint" style="margin:0">Seeded demo accounts are one click away. Operators and admins can change port status; admins can rebuild the index.</p>';
+        '<p class="hint" style="margin:0">Accounts are one click away. Operators and admins can change port status; admins can rebuild the index.</p>';
       box.querySelectorAll('[data-quick]').forEach(function (b) {
         b.addEventListener('click', function () { signIn(QUICK[+b.getAttribute('data-quick')][1], 'kothimbir123'); });
       });

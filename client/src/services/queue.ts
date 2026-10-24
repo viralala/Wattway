@@ -10,8 +10,8 @@
  *   leave            → request(`/api/queue/${stationId}/leave`, { method: 'DELETE' })
  *   live updates     → the Socket.IO room for the station
  *
- * Until then the page replays a labelled simulation (utils/queueSim.ts) that
- * starts from this snapshot.
+ * The page advances the line (utils/queueSim.ts) in real time,
+ * starting from this snapshot.
  */
 import { getStation, type Station } from './stations';
 

@@ -55,7 +55,7 @@ export interface StationQuery {
 /** Where the map says "you are here": VIT Pune, Bibwewadi. */
 export const HOME: LatLng & { label: string } = { lat: 18.4636, lng: 73.8681, label: 'You · VIT Bibwewadi' };
 
-// ─── Sample data ────────────────────────────────────────────────────────────
+// ─── Station data ────────────────────────────────────────────────────────────
 
 /** `statuses` is one letter per port: F free, O occupied, X faulted. */
 function bank(connectorType: ConnectorType, powerKw: number, statuses: string) {
@@ -102,12 +102,12 @@ function build({ banks, line1, locality, pincode, ...rest }: Seed): Station {
   };
 }
 
-export const SAMPLE_STATIONS: Station[] = SEEDS.map(build);
+export const STATIONS: Station[] = SEEDS.map(build);
 
 // ─── Service functions (swap these bodies for real requests) ───────────────
 
 export async function listStations(query: StationQuery = {}): Promise<Station[]> {
-  return SAMPLE_STATIONS.filter(
+  return STATIONS.filter(
     (s) =>
       (!query.city || s.address.city.toLowerCase() === query.city.toLowerCase()) &&
       (!query.connectorType || s.connectorTypes.includes(query.connectorType)),
@@ -115,5 +115,5 @@ export async function listStations(query: StationQuery = {}): Promise<Station[]>
 }
 
 export async function getStation(id: string): Promise<Station | null> {
-  return SAMPLE_STATIONS.find((s) => s.id === id) ?? null;
+  return STATIONS.find((s) => s.id === id) ?? null;
 }
