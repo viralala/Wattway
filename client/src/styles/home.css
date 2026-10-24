@@ -11,12 +11,8 @@
   content: ''; position: absolute; inset: 0; z-index: -1;
   background:
     linear-gradient(to bottom, transparent 72%, rgba(251, 246, 228, .9)), /* melts into the cream below */
-    radial-gradient(circle at 84% 74%, rgba(248, 213, 220, .8), transparent 30%), /* pink glow behind the scooter */
     radial-gradient(ellipse at 30% 40%, rgba(251, 246, 228, .55), transparent 65%), /* keeps the tagline legible */
-    /* soft pink and butter-yellow washes, like extra paint blooms on the map */
-    radial-gradient(ellipse 38% 46% at 70% 14%, rgba(244, 184, 200, .78), transparent 72%),
-    radial-gradient(ellipse 34% 40% at 6% 84%, rgba(244, 184, 200, .72), transparent 72%),
-    radial-gradient(ellipse 22% 30% at 98% 92%, rgba(244, 184, 200, .6), transparent 72%),
+    /* soft butter-yellow washes, like extra paint blooms on the map */
     radial-gradient(ellipse 32% 38% at 46% 78%, rgba(250, 228, 150, .78), transparent 72%),
     radial-gradient(ellipse 28% 34% at 96% 40%, rgba(250, 228, 150, .7), transparent 72%),
     radial-gradient(ellipse 26% 30% at 2% 20%, rgba(250, 228, 150, .65), transparent 72%);
