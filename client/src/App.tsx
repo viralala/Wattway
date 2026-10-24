@@ -12,6 +12,7 @@ import Stations from './pages/Stations';
 import RoutePlanner from './pages/RoutePlanner';
 import Queue from './pages/Queue';
 import Dashboard from './pages/Dashboard';
+import Account from './pages/Account';
 
 export default function App() {
   return (
@@ -24,6 +25,7 @@ export default function App() {
         <Route path="route" element={<RoutePlanner />} />
         <Route path="queue" element={<Queue />} />
         <Route path="dashboard" element={<Dashboard />} />
+        <Route path="account" element={<Account />} />
         <Route path="lab" element={<AlgorithmLab />} />
         <Route path="*" element={<ComingSoon title="Lost on the map" blurb="That page doesn’t exist." />} />
       </Route>

@@ -13,10 +13,10 @@ import type { ConnectorType, IndexedStation, Port } from '../../src/types';
 
 let sequence = 0;
 
-/** Deterministic-ish 24-hex id, so tests never collide. */
-export function objectId(): string {
+/** A unique, well-formed UUID (v4 shape), so tests never collide and zId accepts it. */
+export function testId(): string {
   sequence += 1;
-  return sequence.toString(16).padStart(24, 'a');
+  return `00000000-0000-4000-8000-${sequence.toString(16).padStart(12, '0')}`;
 }
 
 export function makePorts(
@@ -34,7 +34,7 @@ export function makePorts(
 }
 
 export function makeIndexedStation(overrides: Partial<IndexedStation> = {}): IndexedStation {
-  const id = overrides.id ?? objectId();
+  const id = overrides.id ?? testId();
   return {
     id,
     name: `Station ${id.slice(-4)}`,
@@ -63,7 +63,7 @@ export function makeIndexedStation(overrides: Partial<IndexedStation> = {}): Ind
 /** A station payload shaped for `POST /api/stations`. */
 export function makeStationBody(overrides: Record<string, unknown> = {}): Record<string, unknown> {
   return {
-    name: `Test Station ${objectId().slice(-6)}`,
+    name: `Test Station ${testId().slice(-6)}`,
     operator: 'Tata Power',
     address: {
       line1: '1 Test Road',
@@ -84,7 +84,7 @@ export function makeStationBody(overrides: Record<string, unknown> = {}): Record
 }
 
 export function makeUserBody(overrides: Record<string, unknown> = {}): Record<string, unknown> {
-  const id = objectId().slice(-8);
+  const id = testId().slice(-8);
   return {
     name: 'Test Driver',
     email: `driver-${id}@wattway.test`,

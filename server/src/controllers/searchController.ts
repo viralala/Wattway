@@ -6,7 +6,7 @@
  *   GET /api/search/autocomplete   Trie      PRD 10.3
  *   GET /api/search/range          BST       PRD 10.4
  *
- * Both answer entirely from memory. Neither touches MongoDB.
+ * Both answer entirely from memory. Neither touches the database.
  *
  * Every response carries an `explain` block (`?explain=true` for the verbose
  * one) reporting which structure was used, how many candidates it scanned and

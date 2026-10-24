@@ -199,7 +199,7 @@ Updates a running mean in O(1) and moves the station in the rating BST.
 
 ## Search — `/api/search`
 
-All four are public and answer entirely from memory. None touch MongoDB.
+All four are public and answer entirely from memory. None touch the database.
 
 ### `GET /api/search/autocomplete` — **Trie**
 
@@ -307,7 +307,7 @@ height against the theoretical minimum, trie depth, last build time.
 ```
 
 ### `POST /api/index/rebuild` 🔒 admin
-Re-reads every active station from MongoDB and rebuilds all three structures.
+Re-reads every active station from Postgres and rebuilds all three structures.
 The escape hatch for out-of-band database edits during a demo.
 
 ### `POST /api/index/rebalance` 🔒 admin
@@ -320,7 +320,7 @@ endpoint: hammer the index with writes, watch `height` drift above
 ## Queue — `/api/queue`
 
 Owned by the Queue & Realtime module (Shreenath). The live line is a doubly
-linked list per station with a `userId → node` index; MongoDB `QueueEntry` rows
+linked list per station with a `userId → node` index; Postgres `queue_entries` rows
 are its write-behind log. Every write updates `Station.queueLength` / the port
 board and calls `stationIndex.upsert()`, then pushes socket events.
 

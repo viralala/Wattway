@@ -19,7 +19,6 @@
  */
 
 import type { NextFunction, Request, Response } from 'express';
-import mongoose from 'mongoose';
 import { ZodError } from 'zod';
 import { ApiError, isApiError } from '../utils/ApiError';
 import { fail } from '../utils/respond';
@@ -91,36 +90,20 @@ function normalise(error: unknown): Normalised {
     };
   }
 
-  // Mongoose schema validation.
-  if (error instanceof mongoose.Error.ValidationError) {
-    return {
-      status: 422,
-      code: 'VALIDATION_FAILED',
-      message: 'Request failed validation',
-      details: Object.values(error.errors).map((issue) => ({
-        path: issue.path,
-        message: issue.message,
-      })),
-    };
-  }
-
-  // A malformed ObjectId in a path parameter is a client mistake, not a crash.
-  if (error instanceof mongoose.Error.CastError) {
-    return {
-      status: 400,
-      code: 'BAD_REQUEST',
-      message: `'${String(error.value)}' is not a valid ${error.path}`,
-    };
-  }
-
-  // Duplicate key. Name the field, never echo the value.
-  if (isDuplicateKeyError(error)) {
-    const field = Object.keys(error.keyPattern ?? {})[0] ?? 'field';
-    return {
-      status: 409,
-      code: 'CONFLICT',
-      message: `A record with that ${field} already exists`,
-    };
+  // Postgres rejected the write. Name the problem, never echo the value.
+  if (isPostgresError(error)) {
+    // unique_violation
+    if (error.code === '23505') {
+      return { status: 409, code: 'CONFLICT', message: `A record with that ${uniqueField(error)} already exists` };
+    }
+    // check_violation, not_null_violation, invalid_text_representation (e.g. a malformed uuid)
+    if (error.code === '23514' || error.code === '23502' || error.code === '22P02') {
+      return { status: 422, code: 'VALIDATION_FAILED', message: 'Request failed validation' };
+    }
+    // foreign_key_violation
+    if (error.code === '23503') {
+      return { status: 404, code: 'NOT_FOUND', message: 'A referenced record does not exist' };
+    }
   }
 
   // Body parser rejected malformed JSON.
@@ -135,16 +118,27 @@ function normalise(error: unknown): Normalised {
   };
 }
 
-interface DuplicateKeyError {
-  code: number;
-  keyPattern?: Record<string, unknown>;
+interface PostgresError {
+  code: string;
+  constraint?: string;
+  detail?: string;
 }
 
-function isDuplicateKeyError(error: unknown): error is DuplicateKeyError {
+function isPostgresError(error: unknown): error is PostgresError {
   return (
     typeof error === 'object' &&
     error !== null &&
     'code' in error &&
-    (error as { code: unknown }).code === 11000
+    typeof (error as { code: unknown }).code === 'string' &&
+    /^[0-9A-Z]{5}$/.test((error as { code: string }).code)
   );
+}
+
+/** "Key (email)=(...)" → "email"; falls back to the constraint name. */
+function uniqueField(error: PostgresError): string {
+  const match = /Key \(([^)]+)\)/.exec(error.detail ?? '');
+  if (match) return match[1].replace(/[()]/g, '').replace(/address->>'city'/, 'city');
+  if (error.constraint?.includes('email')) return 'email';
+  if (error.constraint?.includes('name_city')) return 'name';
+  return 'value';
 }

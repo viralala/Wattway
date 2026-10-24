@@ -1,7 +1,7 @@
 /**
  * WattWay · Team Kothimbir 🌿
  * ---------------------------------------------------------------------------
- * auth.test.ts — the JWT flow, end to end, against a real mongod.
+ * auth.test.ts — the JWT flow, end to end, against in-memory Postgres (PGlite).
  *
  * PRD Section 11: "Passwords hashed (bcrypt); JWT-protected routes for
  *                  anything user- or operator-specific."
@@ -10,7 +10,8 @@
 
 import request from 'supertest';
 import { app } from '../../src/app';
-import { User } from '../../src/models/User';
+import { Users, toAuthUser } from '../../src/models/User';
+import { db } from '../../src/config/db';
 import { signAccessToken, signRefreshToken } from '../../src/services/tokenService';
 import { clearTestDatabase, startTestDatabase, stopTestDatabase, syncIndexes } from '../helpers/db';
 import { makeUserBody } from '../helpers/factories';
@@ -55,7 +56,7 @@ describe('POST /api/auth/register', () => {
 
   it('stores the password hashed, not in the clear', async () => {
     const { body } = await registerDriver();
-    const user = await User.findByEmailWithPassword(body.email as string);
+    const user = await Users.findByEmailWithPassword(body.email as string);
     expect(user).not.toBeNull();
     expect(user!.passwordHash).not.toBe(body.password);
     expect(user!.passwordHash).toMatch(/^\$2[aby]\$/); // bcrypt
@@ -143,7 +144,7 @@ describe('POST /api/auth/login', () => {
   it('records the login time', async () => {
     const { body } = await registerDriver();
     await request(app).post('/api/auth/login').send({ email: body.email, password: body.password });
-    const user = await User.findOne({ email: body.email }).exec();
+    const user = await Users.findByEmail(body.email as string);
     expect(user!.lastLoginAt).toBeInstanceOf(Date);
   });
 });
@@ -259,7 +260,7 @@ describe('POST /api/auth/refresh', () => {
 
   it('refuses a refresh token for a deleted account', async () => {
     const { body, response } = await registerDriver();
-    await User.deleteOne({ email: body.email }).exec();
+    await db.query('delete from users where email = $1', [body.email]);
 
     const refreshed = await request(app)
       .post('/api/auth/refresh')
@@ -331,16 +332,16 @@ describe('role enforcement', () => {
   });
 
   it('allows an admin through', async () => {
-    const admin = await User.create({
+    const admin = await Users.create({
       name: 'Admin',
       email: 'admin@wattway.test',
-      passwordHash: 'kothimbir123',
+      password: 'kothimbir123',
       role: 'admin',
     });
 
     const rebuild = await request(app)
       .post('/api/index/rebuild')
-      .set('Authorization', `Bearer ${signAccessToken(admin.toAuthUser())}`);
+      .set('Authorization', `Bearer ${signAccessToken(toAuthUser(admin))}`);
 
     expect(rebuild.status).toBe(200);
     expect(rebuild.body.data.rebuilt).toBe(true);

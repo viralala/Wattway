@@ -23,7 +23,7 @@ working piece of the system for the demo". This document is that trace.
 
 Everything marked shipped is implemented from first principles — no library, no
 `npm install` standing in for the structure — and unit-tested with no Express,
-no Mongoose and no network, exactly as PRD Section 11 requires.
+no database driver and no network, exactly as PRD Section 11 requires.
 
 ```bash
 cd server && npm run test:ds     # 63 assertions, no database needed
@@ -61,7 +61,7 @@ trick an order-statistic tree uses.
 
 **3. Balance is handled honestly, not hidden.** A textbook BST degenerates into
 a linked list when keys arrive sorted — precisely what happens streaming
-stations out of MongoDB with `.sort({ pricePerKwh: 1 })`. Rather than quietly
+stations out of Postgres with `order by price_per_kwh`. Rather than quietly
 substituting an AVL or red-black tree (at which point it is no longer the BST
 the PRD asked for), the degenerate case is left visible and two remedies are
 exposed:
@@ -236,7 +236,7 @@ ratingIndex  BST<IndexedStation>   keyed by rating.average
 nameIndex    Trie<IndexedStation>  keyed by name / locality / city / operator
 ```
 
-**Consistency model.** MongoDB is the source of truth; the index is a derived,
+**Consistency model.** Postgres is the source of truth; the index is a derived,
 eventually-consistent view.
 
 - Writes through the station controller call `upsert()` / `remove()`
@@ -352,11 +352,11 @@ earliest-free port, which then frees again after their charge: O(n log k).
 **Index coherence.** Every join / leave / allocation / merge writes
 `Station.queueLength` and the port board, then calls `stationIndex.upsert()` in
 the same request — `queueLength` and free ports feed the search score. The
-integration suite has an *index coherence* group asserting that MongoDB, the
+integration suite has an *index coherence* group asserting that Postgres, the
 `QueueEntry` rows and the in-memory index agree after every write, and that a
 long queue lowers a station in autocomplete ranking immediately.
 
-`QueueEntry` in MongoDB is the write-behind log: positions are persisted so a
+`queue_entries` in Postgres is the durable log: positions are persisted so a
 restart rehydrates the same order. (Battery % and the emergency flag are kept in
 memory only, because `QueueEntry` has no fields for them.)
 

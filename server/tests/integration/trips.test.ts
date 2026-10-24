@@ -2,17 +2,18 @@
  * WattWay · Team Kothimbir 🌿
  * ---------------------------------------------------------------------------
  * trips.test.ts — /api/trips: trip history as a most-recent-first singly
- * linked list stored through `Trip.previousTrip`.
+ * linked list stored through `Trip.previousTrip` (trips.previous_trip_id).
  * ---------------------------------------------------------------------------
  */
 
 import request from 'supertest';
 import { app } from '../../src/app';
-import { Trip } from '../../src/models/Trip';
-import { User } from '../../src/models/User';
+import { db } from '../../src/config/db';
+import { Trips } from '../../src/models/Trip';
+import { Users, toAuthUser } from '../../src/models/User';
 import { signAccessToken } from '../../src/services/tokenService';
 import { clearTestDatabase, startTestDatabase, stopTestDatabase, syncIndexes } from '../helpers/db';
-import { makeUserBody } from '../helpers/factories';
+import { makeUserBody, testId } from '../helpers/factories';
 
 let token: string;
 let otherToken: string;
@@ -28,11 +29,12 @@ afterAll(async () => {
 });
 
 beforeEach(async () => {
-  const user = await User.create({ ...makeUserBody({ email: 'trips@wattway.test' }), passwordHash: 'kothimbir123', role: 'driver' });
-  const other = await User.create({ ...makeUserBody({ email: 'trips2@wattway.test' }), passwordHash: 'kothimbir123', role: 'driver' });
-  userId = user._id.toString();
-  token = signAccessToken(user.toAuthUser());
-  otherToken = signAccessToken(other.toAuthUser());
+  type NewUser = { name: string; email: string; password: string };
+  const user = await Users.create({ ...(makeUserBody({ email: 'trips@wattway.test' }) as NewUser), role: 'driver' });
+  const other = await Users.create({ ...(makeUserBody({ email: 'trips2@wattway.test' }) as NewUser), role: 'driver' });
+  userId = user.id;
+  token = signAccessToken(toAuthUser(user));
+  otherToken = signAccessToken(toAuthUser(other));
 });
 
 afterEach(async () => {
@@ -113,7 +115,7 @@ describe('/api/trips', () => {
     expect(page3.body.data.nextCursor).toBeNull();
     expect(page3.body.data.total).toBe(5);
 
-    const bad = await request(app).get('/api/trips?before=aaaaaaaaaaaaaaaaaaaaaaaa').set('Authorization', `Bearer ${token}`);
+    const bad = await request(app).get(`/api/trips?before=${testId()}`).set('Authorization', `Bearer ${token}`);
     expect(bad.status).toBe(404);
   });
 
@@ -125,8 +127,8 @@ describe('/api/trips', () => {
     const response = await request(app).delete(`/api/trips/${two}`).set('Authorization', `Bearer ${token}`);
     expect(response.status).toBe(200);
 
-    const head = await Trip.findById(three).exec();
-    expect(head?.previousTrip?.toString()).toBe(one);
+    const head = await Trips.findById(three);
+    expect(head?.previousTrip).toBe(one);
     const history = await request(app).get('/api/trips').set('Authorization', `Bearer ${token}`);
     expect(history.body.data.total).toBe(2);
     expect(history.body.data.chainIntact).toBe(true);
@@ -151,15 +153,16 @@ describe('/api/trips', () => {
     await createTrip('linked-1');
     await createTrip('linked-2');
     // A row written by some other code path that never set the pointer.
-    await Trip.create({
-      user: userId,
-      origin: { type: 'Point', coordinates: [73.8, 18.5] },
+    const orphan = await Trips.create(db, userId, {
+      origin: { lat: 18.5, lng: 73.8 },
       originLabel: 'orphan start',
-      destination: { type: 'Point', coordinates: [73.9, 18.6] },
+      destination: { lat: 18.6, lng: 73.9 },
       batteryStartPct: 50,
+      chargingStop: null,
+      status: 'planned',
       previousTrip: null,
-      createdAt: new Date(Date.now() + 60_000),
     });
+    await db.query('update trips set created_at = $2 where id = $1', [orphan.id, new Date(Date.now() + 60_000)]);
 
     const response = await request(app).get('/api/trips').set('Authorization', `Bearer ${token}`);
     expect(response.body.data.total).toBe(3);

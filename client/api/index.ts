@@ -4,8 +4,8 @@
  * api/index.ts — the Express server as one Vercel serverless function.
  *
  * vercel.json rewrites every /api/* request here, so the client and the API
- * share one origin and need no CORS. With MONGO_URI set, the first request
- * connects to MongoDB and builds the station index; without it the function
+ * share one origin and need no CORS. With DATABASE_URL set (Supabase Postgres),
+ * the first request connects and builds the station index; without it the function
  * runs like `npm run dev:lab` — the Algorithm Lab works, database routes fail.
  * Socket.IO needs a long-lived server, so realtime events are not served here.
  * ---------------------------------------------------------------------------
@@ -18,9 +18,9 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 // the install step (see vercel.json); load it with require, not import.
 const require = createRequire(import.meta.url);
 
-const hasDatabase = Boolean(process.env.MONGO_URI);
+const hasDatabase = Boolean(process.env.DATABASE_URL);
 if (!hasDatabase) {
-  process.env.MONGO_URI = 'mongodb://127.0.0.1:27017/wattway-lab-unused';
+  process.env.DATABASE_URL = 'postgres://lab-mode-unused';
   process.env.JWT_ACCESS_SECRET ??= 'lab-only-access-secret-not-for-real-use-0000';
   process.env.JWT_REFRESH_SECRET ??= 'lab-only-refresh-secret-not-for-real-use-111';
 }

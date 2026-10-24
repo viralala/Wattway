@@ -11,7 +11,8 @@ import { RouteMap } from '../components/route/RouteMap';
 import { LinkButton, PageHead, Slider } from '../components/ui';
 import { PLACES, VEHICLES, planRoute, type Place } from '../services/routes';
 import type { GeoResult } from '../services/geocode';
-import { SAMPLE_STATIONS } from '../services/stations';
+import { OfflineNotice } from '../components/OfflineNotice';
+import { useStations } from '../hooks/useStations';
 import {
   formatMin,
   rankCandidates,
@@ -29,8 +30,6 @@ import { formatWait } from '../utils/stations';
 import '../styles/stations.css';
 import '../styles/route.css';
 
-const STATION_PLACES: Place[] = SAMPLE_STATIONS.map((s) => ({ id: s.id, label: s.name, ...s.location }));
-const ALL_PLACES = [...PLACES, ...STATION_PLACES];
 
 const WEIGHT_LABEL: Record<WeightKey, { label: string; hint: string }> = {
   distance: { label: 'Short detour', hint: 'Extra km versus driving straight there' },
@@ -66,9 +65,16 @@ function ScoreBar({ r }: { r: Ranked }) {
 export default function RoutePlanner() {
   const [params] = useSearchParams();
   const initialTo = params.get('to');
+  const { stations, offline } = useStations();
+  const stationPlaces = useMemo<Place[]>(
+    () => (stations ?? []).map((s) => ({ id: s.id, label: s.name, ...s.location })),
+    [stations],
+  );
+  const allPlaces = useMemo(() => [...PLACES, ...stationPlaces], [stationPlaces]);
 
   const [fromId, setFromId] = useState('home');
-  const [toId, setToId] = useState(initialTo && ALL_PLACES.some((p) => p.id === initialTo) ? initialTo : 'hinjewadi');
+  // ?to= may name a station, which only exists once the list has loaded.
+  const [toId, setToId] = useState(initialTo ?? 'hinjewadi');
   const [vehicleId, setVehicleId] = useState('compact');
   const vehicle = VEHICLES.find((v) => v.id === vehicleId) ?? VEHICLES[1];
   const [batteryPct, setBatteryPct] = useState(18);
@@ -80,7 +86,7 @@ export default function RoutePlanner() {
   // Places found with the map search, so they can sit in the From / To lists.
   const [searched, setSearched] = useState<Place[]>([]);
 
-  const placeById = (id: string) => [...ALL_PLACES, ...searched].find((p) => p.id === id) ?? PLACES[0];
+  const placeById = (id: string) => [...allPlaces, ...searched].find((p) => p.id === id) ?? PLACES[0];
   const from = placeById(fromId);
   const to = placeById(toId);
 
@@ -98,9 +104,10 @@ export default function RoutePlanner() {
       ))}
     </optgroup>
   );
-  const samePlace = fromId === toId;
+  const samePlace = from.id === to.id;
 
   useEffect(() => {
+    if (stations === null) return undefined;
     let live = true;
     setPicked(null);
     planRoute({ from, to, batteryPct, rangeKm, vehicle, maxDetourKm }).then((p) => live && setPlan(p));
@@ -108,7 +115,7 @@ export default function RoutePlanner() {
       live = false;
     };
     // from/to/vehicle are derived from these ids, so the ids are the real dependencies.
-  }, [fromId, toId, vehicleId, batteryPct, rangeKm, maxDetourKm]);
+  }, [stations, fromId, toId, vehicleId, batteryPct, rangeKm, maxDetourKm]);
 
   const ranked = useMemo(() => (plan ? rankCandidates(plan.candidates, weights) : []), [plan, weights]);
   const top = ranked[0] ?? null;
@@ -133,8 +140,9 @@ export default function RoutePlanner() {
           every station you can actually reach by detour, wait and price, weighted the way you choose.
         </PageHead>
 
+        {offline && <OfflineNotice />}
         <p className="notice st-sample" role="note">
-          Preview: road distance is estimated as straight-line × {ROAD_FACTOR}, over the sample stations. Real routing
+          Preview: road distance is estimated as straight-line × {ROAD_FACTOR}, over the live station list. Real routing
           (Dijkstra on the road graph) arrives with the routing module.
         </p>
       </div>
@@ -168,7 +176,7 @@ export default function RoutePlanner() {
                 </optgroup>
                 {searchedOptions}
                 <optgroup label="Stations">
-                  {STATION_PLACES.map((p) => (
+                  {stationPlaces.map((p) => (
                     <option key={p.id} value={p.id}>
                       {p.label}
                     </option>

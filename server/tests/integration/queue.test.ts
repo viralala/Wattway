@@ -1,28 +1,28 @@
 /**
  * WattWay · Team Kothimbir 🌿
  * ---------------------------------------------------------------------------
- * queue.test.ts — /api/queue against a real in-memory MongoDB.
+ * queue.test.ts — /api/queue against an in-memory Postgres (PGlite).
  *
  * Covers join / leave / position, slot allocation, urgent insertion, the
  * operator tools (report, allocate, merge), the scheduler and Josephus demos,
  * rehydration after a restart, realtime fan-out, and — the important group —
  * index coherence: every queue write must leave `stationIndex` agreeing with
- * MongoDB, because queueLength and free ports feed the search ranking.
+ * Postgres, because queueLength and free ports feed the search ranking.
  * ---------------------------------------------------------------------------
  */
 
 import request from 'supertest';
 import { app } from '../../src/app';
-import { Station, type StationDocument } from '../../src/models/Station';
-import { QueueEntry } from '../../src/models/QueueEntry';
-import { User } from '../../src/models/User';
+import { db } from '../../src/config/db';
+import { Stations, freePorts, setPortStatus, toIndexed, type Station } from '../../src/models/Station';
+import { Users, toAuthUser } from '../../src/models/User';
 import { stationIndex } from '../../src/services/stationIndex';
 import { queueService } from '../../src/services/queueService';
 import { signAccessToken } from '../../src/services/tokenService';
 import * as sockets from '../../src/sockets';
 import { registerQueueHandlers } from '../../src/sockets/queueHandlers';
 import { clearTestDatabase, startTestDatabase, stopTestDatabase, syncIndexes } from '../helpers/db';
-import { makePorts, makeUserBody } from '../helpers/factories';
+import { makePorts, makeUserBody, testId } from '../helpers/factories';
 
 let operatorToken: string;
 let otherOperatorToken: string;
@@ -42,23 +42,22 @@ afterAll(async () => {
 });
 
 beforeEach(async () => {
-  const operator = await User.create({ ...makeUserBody({ email: 'qop1@wattway.test' }), passwordHash: 'kothimbir123', role: 'operator' });
-  const otherOperator = await User.create({ ...makeUserBody({ email: 'qop2@wattway.test' }), passwordHash: 'kothimbir123', role: 'operator' });
-  const admin = await User.create({ ...makeUserBody({ email: 'qadmin@wattway.test' }), passwordHash: 'kothimbir123', role: 'admin' });
-  operatorId = operator._id.toString();
-  otherOperatorId = otherOperator._id.toString();
-  operatorToken = signAccessToken(operator.toAuthUser());
-  otherOperatorToken = signAccessToken(otherOperator.toAuthUser());
-  adminToken = signAccessToken(admin.toAuthUser());
+  const operator = await Users.create({ ...(makeUserBody({ email: 'qop1@wattway.test' }) as { name: string; email: string; password: string }), role: 'operator' });
+  const otherOperator = await Users.create({ ...(makeUserBody({ email: 'qop2@wattway.test' }) as { name: string; email: string; password: string }), role: 'operator' });
+  const admin = await Users.create({ ...(makeUserBody({ email: 'qadmin@wattway.test' }) as { name: string; email: string; password: string }), role: 'admin' });
+  operatorId = operator.id;
+  otherOperatorId = otherOperator.id;
+  operatorToken = signAccessToken(toAuthUser(operator));
+  otherOperatorToken = signAccessToken(toAuthUser(otherOperator));
+  adminToken = signAccessToken(toAuthUser(admin));
 
   drivers.length = 0;
   for (let i = 0; i < 6; i += 1) {
-    const user = await User.create({
-      ...makeUserBody({ email: `qdriver${i}@wattway.test`, name: `Driver ${i}` }),
-      passwordHash: 'kothimbir123',
+    const user = await Users.create({
+      ...(makeUserBody({ email: `qdriver${i}@wattway.test`, name: `Driver ${i}` }) as { name: string; email: string; password: string }),
       role: 'driver',
     });
-    drivers.push({ id: user._id.toString(), token: signAccessToken(user.toAuthUser()) });
+    drivers.push({ id: user.id, token: signAccessToken(toAuthUser(user)) });
   }
 
   stationIndex.reset();
@@ -75,20 +74,38 @@ afterEach(async () => {
 let stationSeq = 0;
 async function makeStation(
   options: { ports?: number; free?: number; managedBy?: string; lat?: number; lng?: number; name?: string } = {},
-): Promise<StationDocument> {
+): Promise<Station> {
   stationSeq += 1;
   const ports = options.ports ?? 1;
-  const station = await Station.create({
+  const station = await Stations.create({
     name: options.name ?? `Queue Test Station ${stationSeq}`,
     operator: 'Tata Power',
     address: { line1: '1 Test Road', locality: 'Kothrud', city: 'Pune', state: 'Maharashtra', pincode: '411038' },
-    location: { type: 'Point', coordinates: [options.lng ?? 73.8, options.lat ?? 18.5] },
+    location: { lat: options.lat ?? 18.5, lng: options.lng ?? 73.8 },
     pricePerKwh: 14,
     ports: makePorts(ports, options.free ?? ports),
     managedBy: options.managedBy ?? operatorId,
   });
-  stationIndex.upsert(station.toIndexed());
+  stationIndex.upsert(toIndexed(station));
   return station;
+}
+
+interface Row {
+  user: string;
+  status: string;
+  position: number;
+  portIndex: number | null;
+  finishedAt: Date | null;
+}
+
+/** Every queue row of a station (any status), straight from Postgres, oldest first. */
+async function rowsOf(stationId: string, status?: string): Promise<Row[]> {
+  const { rows } = await db.query<Row>(
+    `select user_id as "user", status, position, port_index as "portIndex", finished_at as "finishedAt"
+     from queue_entries where station_id = $1 ${status ? 'and status = $2' : ''} order by joined_at, id`,
+    status ? [stationId, status] : [stationId],
+  );
+  return rows;
 }
 
 const join = (stationId: string, driver: number, body: Record<string, unknown> = {}) =>
@@ -98,14 +115,13 @@ const leave = (stationId: string, driver: number) =>
   request(app).delete(`/api/queue/${stationId}/leave`).set('Authorization', `Bearer ${drivers[driver].token}`);
 
 async function expectCoherent(stationId: string, expected: { queueLength: number; freePorts: number }): Promise<void> {
-  const fromDb = (await Station.findById(stationId).exec()) as StationDocument;
+  const fromDb = (await Stations.findById(stationId)) as Station;
   const fromIndex = stationIndex.get(stationId);
   expect(fromDb.queueLength).toBe(expected.queueLength);
-  expect(fromDb.freePorts).toBe(expected.freePorts);
+  expect(freePorts(fromDb)).toBe(expected.freePorts);
   expect(fromIndex?.queueLength).toBe(expected.queueLength);
   expect(fromIndex?.freePorts).toBe(expected.freePorts);
-  const waitingRows = await QueueEntry.countDocuments({ station: stationId, status: 'waiting' }).exec();
-  expect(waitingRows).toBe(expected.queueLength);
+  expect((await rowsOf(stationId, 'waiting')).length).toBe(expected.queueLength);
 }
 
 // ─── Reading ────────────────────────────────────────────────────────────────
@@ -132,9 +148,9 @@ describe('GET /api/queue/:stationId', () => {
 
   it('validates the id and 404s an unknown or inactive station', async () => {
     expect((await request(app).get('/api/queue/not-an-id')).status).toBe(422);
-    expect((await request(app).get('/api/queue/aaaaaaaaaaaaaaaaaaaaaaaa')).status).toBe(404);
+    expect((await request(app).get(`/api/queue/${testId()}`)).status).toBe(404);
     const station = await makeStation();
-    await Station.updateOne({ _id: station._id }, { isActive: false }).exec();
+    await db.query('update stations set is_active = false where id = $1', [station.id]);
     expect((await request(app).get(`/api/queue/${station.id}`)).status).toBe(404);
   });
 });
@@ -170,12 +186,12 @@ describe('POST /api/queue/:stationId/join', () => {
     expect(second.body.data.you.estimatedWaitMinutes).toBeGreaterThanOrEqual(39);
     expect(second.body.data.queue.waiting[0].you).toBe(true);
 
-    const entries = await QueueEntry.find({ station: station._id }).sort({ joinedAt: 1 }).exec();
+    const entries = await rowsOf(station.id);
     expect(entries.map((e) => [e.status, e.position, e.portIndex])).toEqual([
       ['charging', 0, 0],
       ['waiting', 1, null],
     ]);
-    const stored = (await Station.findById(station.id).exec()) as StationDocument;
+    const stored = (await Stations.findById(station.id)) as Station;
     expect(stored.ports[0].status).toBe('occupied');
   });
 
@@ -201,15 +217,15 @@ describe('POST /api/queue/:stationId/join', () => {
     expect(response.body.data.queue.waiting.map((w: { urgent: boolean }) => w.urgent)).toEqual([true, true, false, false, false]);
     expect(response.body.data.queue.you).toMatchObject({ status: 'waiting', position: 2, urgent: true });
 
-    const positions = await QueueEntry.find({ station: station._id, status: 'waiting' }).sort({ position: 1 }).exec();
-    expect(positions.map((e) => e.user.toString())).toEqual([2, 3, 0, 1, 4].map((i) => drivers[i].id));
+    const positions = (await rowsOf(station.id, 'waiting')).sort((a, b) => a.position - b.position);
+    expect(positions.map((e) => e.user)).toEqual([2, 3, 0, 1, 4].map((i) => drivers[i].id));
   });
 
   it('closes the queue when every port is faulted', async () => {
     const station = await makeStation({ ports: 2 });
-    station.setPortStatus(0, 'faulted');
-    station.setPortStatus(1, 'faulted');
-    await station.save();
+    setPortStatus(station, 0, 'faulted');
+    setPortStatus(station, 1, 'faulted');
+    await Stations.save(station);
     const response = await join(station.id, 0);
     expect(response.status).toBe(409);
   });
@@ -218,7 +234,7 @@ describe('POST /api/queue/:stationId/join', () => {
     const station = await makeStation({ ports: 1 });
     const responses = await Promise.all([0, 1, 2, 3, 4, 5].map((i) => join(station.id, i)));
     expect(responses.every((r) => r.status === 201)).toBe(true);
-    const waiting = await QueueEntry.find({ station: station._id, status: 'waiting' }).exec();
+    const waiting = await rowsOf(station.id, 'waiting');
     expect(waiting.map((e) => e.position).sort()).toEqual([1, 2, 3, 4, 5]);
     await expectCoherent(station.id, { queueLength: 5, freePorts: 0 });
   });
@@ -248,8 +264,8 @@ describe('GET /position and DELETE /leave', () => {
     expect(response.status).toBe(200);
     expect(response.body.data.left).toBe('waiting');
 
-    const rows = await QueueEntry.find({ station: station._id }).exec();
-    const byUser = new Map(rows.map((r) => [r.user.toString(), r]));
+    const rows = await rowsOf(station.id);
+    const byUser = new Map(rows.map((r) => [r.user, r]));
     expect(byUser.get(drivers[1].id)?.status).toBe('cancelled');
     expect(byUser.get(drivers[1].id)?.finishedAt).toBeInstanceOf(Date);
     expect([0, 2, 3].map((i) => byUser.get(drivers[i].id)?.position)).toEqual([1, 2, 3]);
@@ -267,8 +283,8 @@ describe('GET /position and DELETE /leave', () => {
     expect(response.body.data.queue.charging).toHaveLength(1);
     expect(response.body.data.queue.queueLength).toBe(1);
 
-    const rows = await QueueEntry.find({ station: station._id }).exec();
-    const byUser = new Map(rows.map((r) => [r.user.toString(), r]));
+    const rows = await rowsOf(station.id);
+    const byUser = new Map(rows.map((r) => [r.user, r]));
     expect(byUser.get(drivers[0].id)?.status).toBe('completed');
     expect(byUser.get(drivers[1].id)?.status).toBe('charging');
     expect(byUser.get(drivers[1].id)?.portIndex).toBe(0);
@@ -319,7 +335,7 @@ describe('index coherence — every queue write keeps stationIndex in step', () 
 // ─── Restart ────────────────────────────────────────────────────────────────
 
 describe('rehydration', () => {
-  it('rebuilds the line from MongoDB in the stored order after a restart', async () => {
+  it('rebuilds the line from Postgres in the stored order after a restart', async () => {
     const station = await makeStation({ ports: 1 });
     for (const i of [0, 1, 2, 3]) await join(station.id, i);
     await leave(station.id, 2);
@@ -407,11 +423,11 @@ describe('operator tools', () => {
     expect(response.body.data.targetDistanceKm).toBeGreaterThan(0);
     expect(response.body.data.leftistHeap.incomingSize).toBe(2);
 
-    const order = await QueueEntry.find({ station: target._id, status: 'waiting' }).sort({ position: 1 }).exec();
-    expect(order.map((e) => e.user.toString())).toEqual([3, 0, 1, 2].map((i) => drivers[i].id));
+    const order = (await rowsOf(target.id, 'waiting')).sort((a, b) => a.position - b.position);
+    expect(order.map((e) => e.user)).toEqual([3, 0, 1, 2].map((i) => drivers[i].id));
     expect(order.map((e) => e.position)).toEqual([1, 2, 3, 4]);
 
-    const duplicate = await QueueEntry.findOne({ station: source._id, user: drivers[0].id }).exec();
+    const duplicate = (await rowsOf(source.id)).find((e) => e.user === drivers[0].id);
     expect(duplicate?.status).toBe('cancelled');
 
     await expectCoherent(source.id, { queueLength: 0, freePorts: 0 });

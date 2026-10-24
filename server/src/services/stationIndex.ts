@@ -14,7 +14,7 @@
  *
  *  WHY IN MEMORY AT ALL?
  *  ---------------------
- *  MongoDB could answer both of these queries. It would also cost a network
+ *  Postgres could answer both of these queries. It would also cost a network
  *  round trip per keystroke, and the course brief is explicitly about
  *  demonstrating the structures rather than delegating to someone else's
  *  B-tree. A metro-sized dataset (PRD Section 11: "a few hundred nodes") is a
@@ -42,7 +42,7 @@ import { BST } from '../datastructures/BST';
 import { Trie } from '../datastructures/Trie';
 import { rangeQuery, type RangeQueryResult } from '../algorithms/rangeQuery';
 import { autocomplete, type AutocompleteResult } from '../algorithms/autocomplete';
-import { Station } from '../models/Station';
+import { Stations, toIndexed } from '../models/Station';
 import { env } from '../config/env';
 import { logger } from '../utils/logger';
 import type { IndexedStation, RangeSearchCriteria } from '../types';
@@ -138,18 +138,15 @@ export class StationIndex {
   }
 
   /**
-   * Pull every active station out of MongoDB and rebuild.
-   *
-   * `.lean()` is deliberate: we want plain objects, not hydrated documents with
-   * change tracking, and this is the one query in the codebase that reads the
-   * whole collection.
+   * Pull every active station out of Postgres and rebuild. This is the one
+   * query in the codebase that reads the whole table.
    */
   async rebuildFromDatabase(): Promise<number> {
     if (this.rebuilding) return this.rebuilding;
 
     this.rebuilding = (async () => {
-      const documents = await Station.find({ isActive: true }).sort({ pricePerKwh: 1 }).exec();
-      return this.build(documents.map((document) => document.toIndexed()));
+      const stations = await Stations.allActive();
+      return this.build(stations.map(toIndexed));
     })();
 
     try {

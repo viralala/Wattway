@@ -6,7 +6,7 @@
  * PRD Section 11: "Each custom data structure ships with unit tests
  *                  demonstrating correctness independent of the web app."
  *
- * Nothing here imports Express or Mongoose. The tree is tested as a tree.
+ * Nothing here imports Express or a database driver. The tree is tested as a tree.
  * ---------------------------------------------------------------------------
  */
 

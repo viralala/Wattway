@@ -70,11 +70,11 @@ The detailed explanation of each one, with the reasons to give in a viva, is in
 
 ## 4. Run it on your laptop
 
-You need **Node 18.18 or newer**. MongoDB is optional at first.
+You need **Node 18.18 or newer**. A database is optional at first.
 
 ### Option A: no database (fastest)
 
-The Algorithm Lab and the website run without MongoDB.
+The Algorithm Lab and the website run without a database.
 
 ```bash
 cd server
@@ -92,16 +92,17 @@ npm run dev
 
 Open http://localhost:5273. The Algorithm Lab works. Stations, login and queue need Option B.
 
-### Option B: full stack with MongoDB
+### Option B: full stack with Postgres
 
-Use a local MongoDB or a free MongoDB Atlas cluster.
+The team database is a Supabase Postgres project. For local work you can point at it, use a local Postgres
+(load `server/db/schema.sql` first), or run `npm run demo`, which starts an in-memory Postgres and seeds it.
 
 ```bash
 cd server
 cp .env.example .env
 ```
 
-In `.env`, set `MONGO_URI` and two different `JWT_*_SECRET` values (at least 32 characters each). You can generate a
+In `.env`, set `DATABASE_URL` and two different `JWT_*_SECRET` values (at least 32 characters each). You can generate a
 secret with:
 
 ```bash
@@ -150,7 +151,7 @@ The last one returns the route, where to charge and for how long, and the batter
 1. **Pull first.** `git checkout main && git pull`
 2. **Branch.** `git checkout -b feat/<your-module>-<thing>`
 3. **Build in the right layer.** Code flows downward: `routes → controllers → services → algorithms → datastructures`.
-   - `datastructures/` imports nothing from the app (no Express, no Mongoose).
+   - `datastructures/` imports nothing from the app (no Express, no database driver).
    - `algorithms/` are pure functions: data in, result out.
    - Controllers never hold algorithm logic.
 4. **Write tests.** Unit tests go next to the others in `server/tests/`, with no database. Endpoint tests go in
@@ -187,7 +188,7 @@ The last one returns the route, where to charge and for how long, and the batter
 | `POST /api/routes/plan` on real stations | Routing | Swap the 501 placeholder in `server/src/routes/index.ts`. `evRoute.ts` already does the battery-aware part on the Lab graph. |
 | BFS reachability ("stations within my range") | Routing | Use `LinkedQueue` from `Queue.ts` as the frontier. |
 | Top-N station ranking | Routing | Use a heap over the composite score. |
-| Production MongoDB | Viral | Set `MONGO_URI` + JWT secrets in Vercel. Until then the live site runs in Lab mode (no login or stations). |
+| Production database | Viral | Done: Supabase Postgres, with `DATABASE_URL` + JWT secrets set in Vercel. |
 | Realtime queue online | Queue | Vercel functions can't hold Socket.IO connections. Host the server elsewhere (Render / Railway) or fall back to polling. |
 | Update `client/README.md` | Client | Still says "placeholder" though the pages are built. |
 
@@ -199,7 +200,7 @@ The website and the API deploy together as the **`wattway`** project on Vercel (
 
 - `client/vercel.json` sends `/api/*` to `client/api/index.ts`, which runs the Express server as one serverless
   function.
-- Without `MONGO_URI` it runs in Lab mode: the Algorithm Lab works, database routes don't.
+- Without `DATABASE_URL` it runs in Lab mode: the Algorithm Lab works, database routes don't.
 - Production domain: https://wattway-nu.vercel.app
 
 Ask Viral before changing Vercel settings or environment variables.

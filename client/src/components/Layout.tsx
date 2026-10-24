@@ -5,6 +5,8 @@
 import { useEffect, useState } from 'react';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import mapBg from '../assets/images/map-bg.png';
+import { useAuth } from '../context/AuthContext';
+import '../styles/account.css';
 
 const LINKS = [
   { to: '/', label: 'Home' },
@@ -18,6 +20,7 @@ const LINKS = [
 export function Nav() {
   const [open, setOpen] = useState(false);
   const { pathname } = useLocation();
+  const { user } = useAuth();
   useEffect(() => setOpen(false), [pathname]);
 
   return (
@@ -46,6 +49,11 @@ export function Nav() {
               </NavLink>
             </li>
           ))}
+          <li className="nav-account">
+            <NavLink to="/account" className={user ? undefined : 'nav-signin'}>
+              {user ? user.name.split(' ')[0] || 'Account' : 'Sign in'}
+            </NavLink>
+          </li>
         </ul>
       </div>
     </nav>

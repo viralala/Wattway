@@ -8,7 +8,9 @@ import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { StationMap } from '../components/stations/StationMap';
 import { LinkButton, PageHead, Slider } from '../components/ui';
-import { HOME, listStations, type ConnectorType, type Port, type Station } from '../services/stations';
+import { OfflineNotice } from '../components/OfflineNotice';
+import { useStations } from '../hooks/useStations';
+import { getStation, HOME, type ConnectorType, type Port } from '../services/stations';
 import { filterStations, formatWait, type SortKey, type StationFilters, type StationView } from '../utils/stations';
 import '../styles/stations.css';
 
@@ -121,18 +123,12 @@ function StationDetail({ s, onClose }: { s: StationView; onClose: () => void }) 
 }
 
 export default function Stations() {
-  const [all, setAll] = useState<Station[] | null>(null);
+  const { stations: all, offline } = useStations();
+  // The list endpoint carries counts, not the port board: fetch the real board for the open station.
+  const [boards, setBoards] = useState<Record<string, Port[]>>({});
   const [filters, setFilters] = useState<StationFilters>(DEFAULT_FILTERS);
   const [params, setParams] = useSearchParams();
   const selectedId = params.get('station');
-
-  useEffect(() => {
-    let live = true;
-    listStations().then((s) => live && setAll(s));
-    return () => {
-      live = false;
-    };
-  }, []);
 
   const connectors = useMemo(
     () => [...new Set((all ?? []).flatMap((s) => s.connectorTypes))].sort() as ConnectorType[],
@@ -140,10 +136,22 @@ export default function Stations() {
   );
   const results = useMemo(() => filterStations(all ?? [], filters, HOME), [all, filters]);
   // Look the selection up in the full set so a filter change doesn't close the open station.
-  const selected = useMemo(
-    () => filterStations(all ?? [], { ...DEFAULT_FILTERS, maxPrice: Infinity }, HOME).find((s) => s.id === selectedId) ?? null,
-    [all, selectedId],
-  );
+  const selected = useMemo(() => {
+    const found = filterStations(all ?? [], { ...DEFAULT_FILTERS, maxPrice: Infinity }, HOME).find((s) => s.id === selectedId) ?? null;
+    return found && boards[found.id] ? { ...found, ports: boards[found.id], portsApprox: false } : found;
+  }, [all, selectedId, boards]);
+
+  const needsBoard = selected?.portsApprox ? selected.id : null;
+  useEffect(() => {
+    if (!needsBoard) return undefined;
+    let live = true;
+    getStation(needsBoard).then((full) => {
+      if (live && full && !full.portsApprox) setBoards((b) => ({ ...b, [full.id]: full.ports }));
+    }, () => undefined);
+    return () => {
+      live = false;
+    };
+  }, [needsBoard]);
 
   const set = <K extends keyof StationFilters>(key: K, value: StationFilters[K]) =>
     setFilters((f) => ({ ...f, [key]: value }));
@@ -161,10 +169,7 @@ export default function Stations() {
           card to open the station’s port board.
         </PageHead>
 
-        <p className="notice st-sample" role="note">
-          Sample data: 15 fictional stations at real Pune localities. Live numbers arrive once the stations API is
-          connected.
-        </p>
+        {offline && <OfflineNotice />}
 
         <section className="card st-filters" aria-label="Filter stations">
           <div className="field">
@@ -255,7 +260,7 @@ export default function Stations() {
                   <span className="st-dot home" /> You
                 </li>
               </ul>
-              <StationMap stations={mapStations} selectedId={selectedId} onSelect={(id) => select(id)} />
+              <StationMap stations={mapStations} allStations={all ?? []} selectedId={selectedId} onSelect={(id) => select(id)} />
             </div>
             {selected && <StationDetail s={selected} onClose={() => select(null)} />}
           </div>

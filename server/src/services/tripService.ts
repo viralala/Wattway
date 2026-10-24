@@ -22,7 +22,7 @@
  *                    in-memory SinglyLinkedList. O(n).
  *  · deleteTrip()  = DELETE A NODE: the newer trip that pointed at the victim
  *                    is re-pointed at the victim's own `previousTrip`. That is
- *                    `before.next = node.next` from Lab 3, done in MongoDB.
+ *                    `before.next = node.next` from Lab 3, done in SQL.
  *
  *  Robustness: if the chain is ever broken (a row written by a process that
  *  did not set the pointer, or two trips recorded at the same instant), the
@@ -35,11 +35,11 @@
  * ============================================================================
  */
 
-import { Types } from 'mongoose';
 import { SinglyLinkedList } from '../datastructures/LinkedList';
-import { Trip, type TripDocument, type TripStatus } from '../models/Trip';
+import { Trips, tripJSON, type Trip, type TripStatus } from '../models/Trip';
+import { db, type Queryable } from '../config/db';
 import { ApiError } from '../utils/ApiError';
-import { toGeoPoint, type LatLng } from '../utils/geo';
+import type { LatLng } from '../utils/geo';
 
 export interface RecordTripInput {
   origin: LatLng;
@@ -70,49 +70,32 @@ export interface TripHistory {
   middleTripId: string | null;
 }
 
-/** Serialise writes per user so two quick saves cannot both point at one head. */
-const userLocks = new Map<string, Promise<void>>();
-
-async function withUserLock<R>(userId: string, work: () => Promise<R>): Promise<R> {
-  const previous = userLocks.get(userId) ?? Promise.resolve();
-  let release!: () => void;
-  const current = new Promise<void>((resolve) => {
-    release = resolve;
+/** Serialise writes per user so two quick saves cannot both point at one head.
+ *  A transaction-scoped advisory lock does this across serverless instances. */
+async function withUserLock<R>(userId: string, work: (q: Queryable) => Promise<R>): Promise<R> {
+  return db.tx(async (q) => {
+    await q.query('select pg_advisory_xact_lock(hashtext($1))', [`trips:${userId}`]);
+    return work(q);
   });
-  const chained = previous.then(() => current);
-  userLocks.set(userId, chained);
-  await previous;
-  try {
-    return await work();
-  } finally {
-    release();
-    if (userLocks.get(userId) === chained) userLocks.delete(userId);
-  }
 }
 
 /** Insert at head. */
-export async function recordTrip(userId: string, input: RecordTripInput): Promise<TripDocument> {
-  return withUserLock(userId, async () => {
-    const head = await Trip.findOne({ user: userId }).sort({ createdAt: -1, _id: -1 }).select('_id').exec();
-    return Trip.create({
-      user: new Types.ObjectId(userId),
-      origin: toGeoPoint(input.origin),
+export async function recordTrip(userId: string, input: RecordTripInput): Promise<Trip> {
+  return withUserLock(userId, async (q) => {
+    const head = await Trips.headId(q, userId);
+    const stop = input.chargingStop;
+    return Trips.create(q, userId, {
+      origin: input.origin,
       ...(input.originLabel ? { originLabel: input.originLabel } : {}),
-      destination: toGeoPoint(input.destination),
+      destination: input.destination,
       ...(input.destinationLabel ? { destinationLabel: input.destinationLabel } : {}),
       batteryStartPct: input.batteryStartPct,
-      chargingStop: input.chargingStop
+      chargingStop: stop
         ? {
-            station: new Types.ObjectId(input.chargingStop.stationId),
-            ...(input.chargingStop.arrivalBatteryPct !== undefined
-              ? { arrivalBatteryPct: input.chargingStop.arrivalBatteryPct }
-              : {}),
-            ...(input.chargingStop.estimatedWaitMinutes !== undefined
-              ? { estimatedWaitMinutes: input.chargingStop.estimatedWaitMinutes }
-              : {}),
-            ...(input.chargingStop.estimatedChargeMinutes !== undefined
-              ? { estimatedChargeMinutes: input.chargingStop.estimatedChargeMinutes }
-              : {}),
+            station: stop.stationId,
+            ...(stop.arrivalBatteryPct !== undefined ? { arrivalBatteryPct: stop.arrivalBatteryPct } : {}),
+            ...(stop.estimatedWaitMinutes !== undefined ? { estimatedWaitMinutes: stop.estimatedWaitMinutes } : {}),
+            ...(stop.estimatedChargeMinutes !== undefined ? { estimatedChargeMinutes: stop.estimatedChargeMinutes } : {}),
           }
         : null,
       ...(input.route !== undefined ? { route: input.route } : {}),
@@ -121,7 +104,7 @@ export async function recordTrip(userId: string, input: RecordTripInput): Promis
         ? { estimatedDurationMinutes: input.estimatedDurationMinutes }
         : {}),
       status: input.status ?? 'planned',
-      previousTrip: head ? head._id : null,
+      previousTrip: head,
     });
   });
 }
@@ -132,25 +115,25 @@ export async function recordTrip(userId: string, input: RecordTripInput): Promis
  */
 export async function buildHistoryList(
   userId: string,
-): Promise<{ list: SinglyLinkedList<TripDocument>; chainIntact: boolean }> {
-  const rows = await Trip.find({ user: userId }).sort({ createdAt: -1, _id: -1 }).exec();
-  const list = new SinglyLinkedList<TripDocument>();
+): Promise<{ list: SinglyLinkedList<Trip>; chainIntact: boolean }> {
+  const rows = await Trips.forUser(userId);
+  const list = new SinglyLinkedList<Trip>();
   if (rows.length === 0) return { list, chainIntact: true };
 
-  const byId = new Map(rows.map((row) => [row._id.toString(), row]));
+  const byId = new Map(rows.map((row) => [row.id, row]));
   const visited = new Set<string>();
 
   // Head = the newest trip that no other trip points at.
-  const pointedAt = new Set(rows.map((r) => r.previousTrip?.toString()).filter(Boolean) as string[]);
-  const head = rows.find((r) => !pointedAt.has(r._id.toString())) ?? rows[0];
+  const pointedAt = new Set(rows.map((r) => r.previousTrip).filter(Boolean) as string[]);
+  const head = rows.find((r) => !pointedAt.has(r.id)) ?? rows[0];
 
   // Pointer-chase. Each hop is an O(1) map lookup; insertAtTail is O(1).
-  for (let cursor: TripDocument | undefined = head; cursor; ) {
-    const id = cursor._id.toString();
+  for (let cursor: Trip | undefined = head; cursor; ) {
+    const id = cursor.id;
     if (visited.has(id)) break; // a pointer loop in the data - stop, never spin
     visited.add(id);
     list.insertAtTail(cursor);
-    const next: string | null = cursor.previousTrip ? cursor.previousTrip.toString() : null;
+    const next: string | null = cursor.previousTrip;
     cursor = next ? byId.get(next) : undefined;
   }
 
@@ -158,7 +141,7 @@ export async function buildHistoryList(
   if (!chainIntact) {
     // Splice unreachable trips in by recency, so nothing is lost.
     for (const row of rows) {
-      if (visited.has(row._id.toString())) continue;
+      if (visited.has(row.id)) continue;
       const at = list.indexOf((t) => t.createdAt.getTime() < row.createdAt.getTime());
       list.insertAt(at === -1 ? list.size : at, row);
     }
@@ -177,41 +160,35 @@ export async function history(
 
   let start = 0;
   if (options.before) {
-    const at = list.indexOf((trip) => trip._id.toString() === options.before);
+    const at = list.indexOf((trip) => trip.id === options.before);
     if (at === -1) throw ApiError.notFound('Cursor trip not found in your history');
     start = at + 1;
   }
 
-  const page: TripDocument[] = [];
+  const page: Trip[] = [];
   list.forEach((trip, index) => {
     if (index >= start && page.length < options.limit) page.push(trip);
   });
 
   const end = start + page.length;
   return {
-    trips: page.map((trip) => trip.toJSON() as Record<string, unknown>),
+    trips: page.map(tripJSON),
     total: list.size,
-    nextCursor: end < list.size && page.length > 0 ? page[page.length - 1]._id.toString() : null,
+    nextCursor: end < list.size && page.length > 0 ? page[page.length - 1].id : null,
     chainIntact,
-    middleTripId: list.middle()?._id.toString() ?? null,
+    middleTripId: list.middle()?.id ?? null,
   };
 }
 
-export async function getTrip(userId: string, tripId: string): Promise<TripDocument> {
-  const trip = await Trip.findById(tripId).exec();
+export async function getTrip(userId: string, tripId: string): Promise<Trip> {
+  const trip = await Trips.findById(tripId);
   // Same 404 for "missing" and "someone else's": do not confirm the id exists.
-  if (!trip || trip.user.toString() !== userId) throw ApiError.notFound('Trip not found');
+  if (!trip || trip.user !== userId) throw ApiError.notFound('Trip not found');
   return trip;
 }
 
 /** Delete a node: re-point its newer neighbour past it. */
 export async function deleteTrip(userId: string, tripId: string): Promise<void> {
-  await withUserLock(userId, async () => {
-    const trip = await getTrip(userId, tripId);
-    await Trip.updateMany(
-      { user: trip.user, previousTrip: trip._id },
-      { $set: { previousTrip: trip.previousTrip ?? null } },
-    ).exec();
-    await Trip.deleteOne({ _id: trip._id }).exec();
-  });
+  const trip = await getTrip(userId, tripId);
+  await withUserLock(userId, (q) => Trips.unlinkAndDelete(q, trip));
 }

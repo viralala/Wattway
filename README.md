@@ -12,7 +12,7 @@ Built by **Team Kothimbir 🌿**
 ![Node](https://img.shields.io/badge/node-%E2%89%A518.18-339933?logo=node.js&logoColor=white)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.5-3178C6?logo=typescript&logoColor=white)
 ![Express](https://img.shields.io/badge/Express-4.19-000000?logo=express&logoColor=white)
-![MongoDB](https://img.shields.io/badge/MongoDB-8.6-47A248?logo=mongodb&logoColor=white)
+![Supabase](https://img.shields.io/badge/Supabase-Postgres-3FCF8E?logo=supabase&logoColor=white)
 ![Tests](https://img.shields.io/badge/tests-201%20passing-brightgreen)
 ![License](https://img.shields.io/badge/license-MIT-blue)
 
@@ -98,7 +98,7 @@ structure — and unit-tested with no database and no web framework.
 └───────┬───────────────┬─────┘
         │               │
 ┌───────▼──────┐ ┌──────▼───────┐
-│   MongoDB    │ │    Redis     │
+│   Postgres   │ │    Redis     │
 │ stations,    │ │ live queue   │
 │ users, trips │ │ state, cache │
 └──────────────┘ └──────────────┘
@@ -118,16 +118,16 @@ structure can be demonstrated and tested entirely on its own.
 
 ## Quick start
 
-**Prerequisites:** Node ≥ 18.18 and MongoDB (local, or a free MongoDB Atlas
-cluster).
+**Prerequisites:** Node ≥ 18.18 and Postgres (a free Supabase project, or a
+local Postgres). Load the schema from `server/db/schema.sql` first.
 
 ```bash
 git clone https://github.com/viralala/Wattway.git
 cd Wattway/server
 
 npm install
-cp .env.example .env          # then set MONGO_URI and the two JWT secrets
-npm run seed                  # 19 stations across Mumbai, Pune, Bengaluru, Delhi NCR
+cp .env.example .env          # then set DATABASE_URL and the two JWT secrets
+npm run seed                  # 19 curated stations + 38 real Pune stations from OpenStreetMap
 npm run dev                   # http://localhost:4000
 ```
 
@@ -194,7 +194,7 @@ Run from `server/`.
 | `NODE_ENV` | `development` | |
 | `PORT` | `4000` | |
 | `CORS_ORIGIN` | `http://localhost:3000,http://localhost:5173` | comma-separated |
-| `MONGO_URI` | — | **required** |
+| `DATABASE_URL` | — | **required**; Postgres connection string (Supabase transaction pooler in production) |
 | `REDIS_URL` | — | optional; for the realtime module |
 | `JWT_ACCESS_SECRET` | — | **required**, ≥ 32 chars |
 | `JWT_REFRESH_SECRET` | — | **required**, ≥ 32 chars, must differ from the access secret |
@@ -267,9 +267,9 @@ npm test            # 201 tests including full API integration
 | `tests/algorithms/` | Range query planner, filters, ordering, pagination; autocomplete ranking and scoring |
 | `tests/integration/` | Auth flow, station CRUD, the port board, search endpoints, **and index coherence on every write path** |
 
-Integration tests run against a real in-memory `mongod`, so unique indexes,
-geospatial queries and schema validation are genuinely exercised. The first run
-downloads and caches a mongod binary.
+Integration tests run against a real in-memory Postgres (PGlite), loaded with
+the same `db/schema.sql` production uses, so constraints, unique indexes and
+transactions are genuinely exercised. Nothing needs installing.
 
 ---
 
@@ -293,7 +293,7 @@ today.
 **Read [`followthis.md`](followthis.md) first.** It covers the folder structure,
 the layering rules, the response and error conventions, the testing bar, and the
 one rule that will bite you (every station write must keep the in-memory index
-in step with MongoDB).
+in step with Postgres).
 
 The short version: the architecture is already decided — fill in your module
 inside it rather than redesigning it, and never let a library stand in for a
@@ -334,15 +334,17 @@ wattway/
 
 ## Tech stack
 
-**Backend** Node.js · Express 4 · TypeScript 5.5 · MongoDB + Mongoose 8 ·
+**Backend** Node.js · Express 4 · TypeScript 5.5 · Postgres (Supabase) via node-postgres ·
 Socket.IO · JWT (jsonwebtoken + bcryptjs) · Zod · Helmet · Jest + Supertest ·
-mongodb-memory-server
+PGlite
 
-**Frontend** *(planned)* React + TypeScript · Tailwind CSS · Leaflet + OpenStreetMap ·
+**Frontend** React + TypeScript · Tailwind CSS · Leaflet + OpenStreetMap ·
 Zustand · Socket.IO client
 
-**Deployment** *(planned)* Vercel (client) · Render / Railway (server) ·
-MongoDB Atlas
+**Deployment** Vercel (client + API as a serverless function) · Supabase Postgres
+
+**Data** Real Pune charging stations from OpenStreetMap (© OpenStreetMap
+contributors, ODbL), refreshed with `npm run import:osm`
 
 ---
 

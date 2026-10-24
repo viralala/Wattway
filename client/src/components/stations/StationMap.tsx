@@ -5,7 +5,7 @@
  */
 import { useEffect, useState, type KeyboardEvent } from 'react';
 import L from 'leaflet';
-import { HOME, SAMPLE_STATIONS } from '../../services/stations';
+import { HOME } from '../../services/stations';
 import type { GeoResult } from '../../services/geocode';
 import type { StationView } from '../../utils/stations';
 import { MapSearch } from '../map/MapSearch';
@@ -21,15 +21,16 @@ export const activateOnKey = (fn: () => void) => (e: KeyboardEvent) => {
   }
 };
 
-/** Every sample station plus home, so the first view frames them all. */
-const ALL_POINTS = L.latLngBounds([...SAMPLE_STATIONS.map((s) => s.location), HOME].map((p) => [p.lat, p.lng]));
 
 export function StationMap({
   stations,
+  allStations,
   selectedId,
   onSelect,
 }: {
   stations: StationView[];
+  /** Every live station, so the first view frames them all even when filters hide some. */
+  allStations: { location: { lat: number; lng: number } }[];
   selectedId: string | null;
   onSelect: (id: string) => void;
 }) {
@@ -37,9 +38,14 @@ export function StationMap({
   const [found, setFound] = useState<GeoResult | null>(null);
 
   // Fit to every station (not just the filtered ones) so the map doesn't jump as filters change.
+  const fitKey = allStations.length;
   useEffect(() => {
-    handle?.map.fitBounds(ALL_POINTS, { padding: [30, 30] });
-  }, [handle]);
+    if (!handle) return;
+    const points = [...allStations.map((s) => s.location), HOME].filter((p) => p.lat !== 0 || p.lng !== 0);
+    handle.map.fitBounds(L.latLngBounds(points.map((p) => [p.lat, p.lng])), { padding: [30, 30] });
+    // Refit only when the set of stations changes, not on every filter tweak.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [handle, fitKey]);
 
   useEffect(() => {
     if (!handle) return;

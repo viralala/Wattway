@@ -2,7 +2,7 @@
  * WattWay · Team Kothimbir 🌿
  * ---------------------------------------------------------------------------
  * algorithms.test.ts — the Algorithm Lab over HTTP. The Lab is database-free, so
- * this suite needs no mongod.
+ * this suite needs no database.
  * ---------------------------------------------------------------------------
  */
 

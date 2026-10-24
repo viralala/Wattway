@@ -32,7 +32,7 @@ import {
   type SchedulingPolicy,
 } from '../algorithms/scheduler';
 import { josephus, josephusSurvivorIndex } from '../datastructures/LinkedList';
-import type { StationDocument } from '../models/Station';
+import type { Station } from '../models/Station';
 
 /** GET /api/queue/:stationId — public; personalised when signed in. */
 export async function getQueue(req: Request, res: Response): Promise<void> {
@@ -128,8 +128,8 @@ export async function merge(req: Request, res: Response): Promise<void> {
   const user = currentUser(req);
   const { targetStationId, faultPorts = false } = req.body as { targetStationId?: string; faultPorts?: boolean };
 
-  const canManage = (station: StationDocument): boolean =>
-    user.role === 'admin' || (station.managedBy !== undefined && station.managedBy?.toString() === user.id);
+  const canManage = (station: Station): boolean =>
+    user.role === 'admin' || (station.managedBy !== undefined && station.managedBy === user.id);
 
   const result = await queueService.mergeInto(req.params.stationId, {
     ...(targetStationId ? { targetStationId } : {}),

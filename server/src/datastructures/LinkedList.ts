@@ -12,7 +12,7 @@
  *  WHERE EACH VARIANT IS USED IN WATTWAY
  *  -------------------------------------
  *  SinglyLinkedList   trip history, most recent first (insert at head).
- *                     `Trip.previousTrip` in MongoDB is literally the `next`
+ *                     `trips.previous_trip_id` in Postgres is literally the `next`
  *                     pointer of this list - see services/tripService.ts.
  *                     Also exported as `LinkedList` for the graph module's
  *                     adjacency lists.

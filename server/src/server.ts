@@ -7,7 +7,7 @@
  *
  *  Boot order is deliberate:
  *
- *    1. connect to MongoDB       — nothing below works without it
+ *    1. connect to Postgres      — nothing below works without it
  *    2. build the station index  — BSTs + trie, from the database
  *    3. start listening          — only once we can actually serve a request
  *    4. attach Socket.IO         — shares the same HTTP server

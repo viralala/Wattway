@@ -33,7 +33,7 @@
  *
  *  3. BALANCE. A textbook BST degenerates into a linked list when keys arrive
  *     in sorted order - exactly what happens if you stream stations out of
- *     MongoDB with `.sort({ pricePerKwh: 1 })`. Rather than hide that behind a
+ *     Postgres with `order by price_per_kwh`. Rather than hide that behind a
  *     self-balancing rotation scheme (which stops being a plain BST, and the
  *     PRD asks for a BST), we keep the honest BST and expose two escape
  *     hatches: `BST.fromSorted()` builds a perfectly balanced tree in O(n) via

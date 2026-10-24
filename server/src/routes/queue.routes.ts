@@ -11,7 +11,7 @@
  *  the operator who manages that station, or an admin.
  *
  *  `/demo/...` is mounted before `/:stationId` so "demo" is never parsed as a
- *  station id (it would fail the ObjectId check anyway).
+ *  station id (it would fail the id check anyway).
  * ============================================================================
  */
 
@@ -22,11 +22,11 @@ import { asyncHandler } from '../middleware/asyncHandler';
 import { optionalAuth, requireAuth, requireStationAccess } from '../middleware/auth';
 import { validate } from '../middleware/validate';
 import { SCHEDULING_POLICIES } from '../algorithms/scheduler';
-import { zBool, zObjectId } from '../utils/zod';
+import { zBool, zId } from '../utils/zod';
 
 const router = Router();
 
-const stationParams = z.object({ stationId: zObjectId });
+const stationParams = z.object({ stationId: zId });
 
 const joinSchema = z
   .object({
@@ -51,7 +51,7 @@ const reportQuery = z.object({ top: z.coerce.number().int().min(1).max(50).defau
 const mergeSchema = z
   .object({
     /** Omit to merge into the nearest active station. */
-    targetStationId: zObjectId.optional(),
+    targetStationId: zId.optional(),
     /** Also mark the source's free ports as faulted. */
     faultPorts: zBool.optional(),
   })

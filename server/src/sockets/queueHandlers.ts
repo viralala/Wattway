@@ -35,7 +35,7 @@ import { emitToStation, emitToUser, getSocketServer, rooms, type WattWaySocket }
 import { queueService, type QueueChange } from '../services/queueService';
 import { isApiError } from '../utils/ApiError';
 
-const OBJECT_ID = /^[0-9a-fA-F]{24}$/;
+const STATION_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 type Ack = (response: { ok: true; data: unknown } | { ok: false; error: string }) => void;
 
@@ -48,8 +48,8 @@ function failure(error: unknown): string {
 export function registerQueueHandlers(socket: WattWaySocket): void {
   socket.on('queue:watch', async (stationId: unknown, maybeAck?: unknown) => {
     const ack = asAck(maybeAck);
-    if (typeof stationId !== 'string' || !OBJECT_ID.test(stationId)) {
-      ack?.({ ok: false, error: 'stationId must be a 24-character id' });
+    if (typeof stationId !== 'string' || !STATION_ID.test(stationId)) {
+      ack?.({ ok: false, error: 'stationId must be a valid station id (UUID)' });
       return;
     }
     await socket.join(rooms.station(stationId));
@@ -72,8 +72,8 @@ export function registerQueueHandlers(socket: WattWaySocket): void {
       ack({ ok: false, error: 'Sign in to see your position' });
       return;
     }
-    if (typeof stationId !== 'string' || !OBJECT_ID.test(stationId)) {
-      ack({ ok: false, error: 'stationId must be a 24-character id' });
+    if (typeof stationId !== 'string' || !STATION_ID.test(stationId)) {
+      ack({ ok: false, error: 'stationId must be a valid station id (UUID)' });
       return;
     }
     try {

@@ -23,8 +23,8 @@
 import type { NextFunction, Request, RequestHandler, Response } from 'express';
 import { bearerFrom, verifyAccessToken } from '../services/tokenService';
 import { ApiError } from '../utils/ApiError';
-import { User } from '../models/User';
-import { Station } from '../models/Station';
+import { Users, toAuthUser } from '../models/User';
+import { Stations } from '../models/Station';
 import type { AuthUser, UserRole } from '../types';
 
 /** Reject the request unless it carries a valid access token. */
@@ -111,13 +111,13 @@ export const requireFreshUser: RequestHandler = async (
   try {
     if (!req.user) throw ApiError.unauthorized();
 
-    const user = await User.findById(req.user.id).exec();
+    const user = await Users.findById(req.user.id);
     if (!user) throw ApiError.unauthorized('Account no longer exists', 'TOKEN_INVALID');
     if (user.tokenVersion !== req.user.tokenVersion) {
       throw ApiError.unauthorized('Session has been revoked, please sign in again', 'TOKEN_INVALID');
     }
 
-    req.user = user.toAuthUser();
+    req.user = toAuthUser(user);
     next();
   } catch (error) {
     next(error);
@@ -128,7 +128,7 @@ export const requireFreshUser: RequestHandler = async (
  * Authorise a write against one specific station.
  *
  * Admins pass unconditionally. An operator passes only for a station they
- * manage — checked against `Station.managedBy`, which is the authoritative
+ * manage — checked against `stations.managed_by`, which is the authoritative
  * link (a user's `operatorOf` array is a convenience mirror of it).
  *
  * @param param name of the route parameter holding the station id.
@@ -146,10 +146,10 @@ export function requireStationAccess(param = 'id'): RequestHandler {
       }
 
       const stationId = req.params[param];
-      const station = await Station.findById(stationId).select('managedBy').exec();
-      if (!station) throw ApiError.notFound('Station not found');
+      const managedBy = await Stations.managedBy(stationId);
+      if (managedBy === undefined) throw ApiError.notFound('Station not found');
 
-      if (!station.managedBy || station.managedBy.toString() !== req.user.id) {
+      if (!managedBy || managedBy !== req.user.id) {
         throw ApiError.forbidden('You do not manage this station');
       }
 

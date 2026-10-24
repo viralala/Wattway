@@ -1,0 +1,1021 @@
+{
+  "source": "OpenStreetMap contributors (ODbL)",
+  "fetchedAt": "2026-10-24T03:49:34.250Z",
+  "stations": [
+    {
+      "externalId": "node/763446417",
+      "name": "EV Charging Warje",
+      "operator": "Independent",
+      "line1": "Warje",
+      "locality": "Warje",
+      "city": "Pune",
+      "state": "Maharashtra",
+      "pincode": "411051",
+      "lat": 18.496101,
+      "lng": 73.808859,
+      "pricePerKwh": 21.5,
+      "ports": [
+        [
+          "CCS2",
+          60
+        ],
+        [
+          "Type2",
+          22
+        ]
+      ],
+      "amenities": []
+    },
+    {
+      "externalId": "node/6116153836",
+      "name": "PowerUP Baner",
+      "operator": "PowerUP",
+      "line1": "Baner",
+      "locality": "Baner",
+      "city": "Pune",
+      "state": "Maharashtra",
+      "pincode": "411001",
+      "lat": 18.567214,
+      "lng": 73.771986,
+      "pricePerKwh": 12,
+      "ports": [
+        [
+          "Bharat-AC-001",
+          3.3
+        ],
+        [
+          "Bharat-AC-001",
+          3.3
+        ]
+      ],
+      "amenities": []
+    },
+    {
+      "externalId": "node/9411828530",
+      "name": "Ather Energy Karve Nagar",
+      "operator": "Ather Energy",
+      "line1": "Paud Road",
+      "locality": "Karve Nagar",
+      "city": "Pune",
+      "state": "Maharashtra",
+      "pincode": "411051",
+      "lat": 18.507194,
+      "lng": 73.803773,
+      "pricePerKwh": 12.5,
+      "ports": [
+        [
+          "Bharat-AC-001",
+          3.3
+        ],
+        [
+          "Bharat-AC-001",
+          3.3
+        ]
+      ],
+      "amenities": []
+    },
+    {
+      "externalId": "node/10013758817",
+      "name": "Tata Power Kalewadi",
+      "operator": "Tata Power",
+      "line1": "Hedgewar road",
+      "locality": "Kalewadi",
+      "city": "Pune",
+      "state": "Maharashtra",
+      "pincode": "411071",
+      "lat": 18.611154,
+      "lng": 73.783155,
+      "pricePerKwh": 20,
+      "ports": [
+        [
+          "CCS2",
+          60
+        ],
+        [
+          "Type2",
+          22
+        ]
+      ],
+      "amenities": []
+    },
+    {
+      "externalId": "node/10097434142",
+      "name": "Bolt Erandwane",
+      "operator": "Bolt",
+      "line1": "Paud Road",
+      "locality": "Erandwane",
+      "city": "Pune",
+      "state": "Maharashtra",
+      "pincode": "411051",
+      "lat": 18.509563,
+      "lng": 73.814701,
+      "pricePerKwh": 12.5,
+      "ports": [
+        [
+          "Bharat-AC-001",
+          3.3
+        ],
+        [
+          "Bharat-AC-001",
+          3.3
+        ],
+        [
+          "Bharat-AC-001",
+          3.3
+        ],
+        [
+          "Bharat-AC-001",
+          3.3
+        ],
+        [
+          "Bharat-AC-001",
+          3.3
+        ],
+        [
+          "Bharat-AC-001",
+          3.3
+        ],
+        [
+          "Bharat-AC-001",
+          3.3
+        ],
+        [
+          "Bharat-AC-001",
+          3.3
+        ]
+      ],
+      "amenities": []
+    },
+    {
+      "externalId": "node/10097434143",
+      "name": "Ather Energy Bavdhan",
+      "operator": "Ather Energy",
+      "line1": "Pashan-Bavdhan Road",
+      "locality": "Bavdhan",
+      "city": "Pune",
+      "state": "Maharashtra",
+      "pincode": "411072",
+      "lat": 18.510568,
+      "lng": 73.781902,
+      "pricePerKwh": 13,
+      "ports": [
+        [
+          "Bharat-AC-001",
+          3.3
+        ]
+      ],
+      "amenities": []
+    },
+    {
+      "externalId": "node/10097434144",
+      "name": "Ather Energy Sahakar Nagar",
+      "operator": "Ather Energy",
+      "line1": "Golwalkar Guruji Path",
+      "locality": "Sahakar Nagar",
+      "city": "Pune",
+      "state": "Maharashtra",
+      "pincode": "411001",
+      "lat": 18.484496,
+      "lng": 73.849675,
+      "pricePerKwh": 13.5,
+      "ports": [
+        [
+          "Bharat-AC-001",
+          3.3
+        ]
+      ],
+      "amenities": []
+    },
+    {
+      "externalId": "node/10097460085",
+      "name": "Ather Energy Erandwane",
+      "operator": "Ather Energy",
+      "line1": "Vishnushastri Chiplunkar Path",
+      "locality": "Erandwane",
+      "city": "Pune",
+      "state": "Maharashtra",
+      "pincode": "411001",
+      "lat": 18.518977,
+      "lng": 73.830464,
+      "pricePerKwh": 11.5,
+      "ports": [
+        [
+          "Bharat-AC-001",
+          3.3
+        ],
+        [
+          "Bharat-AC-001",
+          3.3
+        ]
+      ],
+      "amenities": []
+    },
+    {
+      "externalId": "node/10250046452",
+      "name": "Tata Power Aundh",
+      "operator": "Tata Power",
+      "line1": "Shankarao Gaikwad Path",
+      "locality": "Aundh",
+      "city": "Pune",
+      "state": "Maharashtra",
+      "pincode": "411027",
+      "lat": 18.553634,
+      "lng": 73.806562,
+      "pricePerKwh": 21,
+      "ports": [
+        [
+          "CCS2",
+          60
+        ],
+        [
+          "Type2",
+          22
+        ]
+      ],
+      "amenities": []
+    },
+    {
+      "externalId": "node/10290789663",
+      "name": "GoEgo Wakad gaav",
+      "operator": "GoEgo",
+      "line1": "exit to baner",
+      "locality": "Wakad gaav",
+      "city": "Pune",
+      "state": "Maharashtra",
+      "pincode": "411045",
+      "lat": 18.578879,
+      "lng": 73.762489,
+      "pricePerKwh": 13.5,
+      "ports": [
+        [
+          "Bharat-AC-001",
+          3.3
+        ],
+        [
+          "Bharat-AC-001",
+          3.3
+        ]
+      ],
+      "amenities": []
+    },
+    {
+      "externalId": "node/10615755147",
+      "name": "Trimurti Motors Bavdhan",
+      "operator": "Trimurti Motors",
+      "line1": "Tinseltown Rd",
+      "locality": "Bavdhan",
+      "city": "Pune",
+      "state": "Maharashtra",
+      "pincode": "411072",
+      "lat": 18.511435,
+      "lng": 73.777034,
+      "pricePerKwh": 12.5,
+      "ports": [
+        [
+          "Bharat-AC-001",
+          3.3
+        ]
+      ],
+      "amenities": []
+    },
+    {
+      "externalId": "node/10671202586",
+      "name": "Shell Vishal Nagar",
+      "operator": "Shell",
+      "line1": "Vishal Nagar",
+      "locality": "Vishal Nagar",
+      "city": "Pune",
+      "state": "Maharashtra",
+      "pincode": "431027",
+      "lat": 18.585728,
+      "lng": 73.781752,
+      "pricePerKwh": 22,
+      "ports": [
+        [
+          "CCS2",
+          60
+        ],
+        [
+          "Type2",
+          22
+        ],
+        [
+          "Type2",
+          22
+        ]
+      ],
+      "amenities": []
+    },
+    {
+      "externalId": "node/10719100420",
+      "name": "GoEgo Wakad",
+      "operator": "GoEgo",
+      "line1": "Babasaheb Ambedkar Path",
+      "locality": "Wakad",
+      "city": "Pune",
+      "state": "Maharashtra",
+      "pincode": "410005",
+      "lat": 18.617076,
+      "lng": 73.76731,
+      "pricePerKwh": 11,
+      "ports": [
+        [
+          "Bharat-AC-001",
+          3.3
+        ]
+      ],
+      "amenities": []
+    },
+    {
+      "externalId": "node/10797010207",
+      "name": "Tata Power Bhujbal Chowk",
+      "operator": "Tata Power",
+      "line1": "Highway bypass",
+      "locality": "Bhujbal Chowk",
+      "city": "Pune",
+      "state": "Maharashtra",
+      "pincode": "411057",
+      "lat": 18.599869,
+      "lng": 73.754867,
+      "pricePerKwh": 16,
+      "ports": [
+        [
+          "Type2",
+          22
+        ]
+      ],
+      "amenities": []
+    },
+    {
+      "externalId": "node/10797010208",
+      "name": "Tata Power Bhujbal Chowk 2",
+      "operator": "Tata Power",
+      "line1": "Highway bypass",
+      "locality": "Bhujbal Chowk",
+      "city": "Pune",
+      "state": "Maharashtra",
+      "pincode": "411057",
+      "lat": 18.599598,
+      "lng": 73.754875,
+      "pricePerKwh": 20.5,
+      "ports": [
+        [
+          "CCS2",
+          60
+        ]
+      ],
+      "amenities": []
+    },
+    {
+      "externalId": "node/10841782157",
+      "name": "Ather Energy Vishal Nagar",
+      "operator": "Ather Energy",
+      "line1": "Wakad Road",
+      "locality": "Vishal Nagar",
+      "city": "Pune",
+      "state": "Maharashtra",
+      "pincode": "411027",
+      "lat": 18.588764,
+      "lng": 73.78273,
+      "pricePerKwh": 13.5,
+      "ports": [
+        [
+          "Bharat-AC-001",
+          3.3
+        ]
+      ],
+      "amenities": []
+    },
+    {
+      "externalId": "node/10844985580",
+      "name": "EV Charging Viman Nagar",
+      "operator": "Independent",
+      "line1": "Airport Road",
+      "locality": "Viman Nagar",
+      "city": "Pune",
+      "state": "Maharashtra",
+      "pincode": "411001",
+      "lat": 18.577832,
+      "lng": 73.907349,
+      "pricePerKwh": 22,
+      "ports": [
+        [
+          "CCS2",
+          60
+        ],
+        [
+          "Type2",
+          22
+        ]
+      ],
+      "amenities": []
+    },
+    {
+      "externalId": "node/10870849607",
+      "name": "GoEgo Wakad gaav 2",
+      "operator": "GoEgo",
+      "line1": "Hinjawadi Road",
+      "locality": "Wakad gaav",
+      "city": "Pune",
+      "state": "Maharashtra",
+      "pincode": "411057",
+      "lat": 18.590664,
+      "lng": 73.745789,
+      "pricePerKwh": 13,
+      "ports": [
+        [
+          "Bharat-AC-001",
+          3.3
+        ],
+        [
+          "Bharat-AC-001",
+          3.3
+        ]
+      ],
+      "amenities": []
+    },
+    {
+      "externalId": "node/11005778506",
+      "name": "Jio-bp pulse Aundh",
+      "operator": "Jio-bp pulse",
+      "line1": "Aundh",
+      "locality": "Aundh",
+      "city": "Pune",
+      "state": "Maharashtra",
+      "pincode": "411027",
+      "lat": 18.563807,
+      "lng": 73.806857,
+      "pricePerKwh": 19.5,
+      "ports": [
+        [
+          "CCS2",
+          60
+        ],
+        [
+          "Type2",
+          22
+        ]
+      ],
+      "amenities": []
+    },
+    {
+      "externalId": "node/11033745938",
+      "name": "Tata Power Hinjawadi",
+      "operator": "Tata Power",
+      "line1": "Hinjawadi Phase 1 road",
+      "locality": "Hinjawadi",
+      "city": "Pune",
+      "state": "Maharashtra",
+      "pincode": "411057",
+      "lat": 18.589756,
+      "lng": 73.738172,
+      "pricePerKwh": 21.5,
+      "ports": [
+        [
+          "CCS2",
+          60
+        ],
+        [
+          "Type2",
+          22
+        ]
+      ],
+      "amenities": []
+    },
+    {
+      "externalId": "node/11217502924",
+      "name": "Westend Mall Aundh",
+      "operator": "Westend Mall",
+      "line1": "Wireless Colony Lane",
+      "locality": "Aundh",
+      "city": "Pune",
+      "state": "Maharashtra",
+      "pincode": "411027",
+      "lat": 18.562331,
+      "lng": 73.806936,
+      "pricePerKwh": 20,
+      "ports": [
+        [
+          "CCS2",
+          60
+        ],
+        [
+          "Type2",
+          22
+        ],
+        [
+          "Type2",
+          22
+        ],
+        [
+          "Type2",
+          22
+        ],
+        [
+          "Type2",
+          22
+        ]
+      ],
+      "amenities": []
+    },
+    {
+      "externalId": "node/11452082417",
+      "name": "EV Charging Ajmera",
+      "operator": "Independent",
+      "line1": "Service Road",
+      "locality": "Ajmera",
+      "city": "Pune",
+      "state": "Maharashtra",
+      "pincode": "411089",
+      "lat": 18.634795,
+      "lng": 73.799051,
+      "pricePerKwh": 20.5,
+      "ports": [
+        [
+          "CCS2",
+          60
+        ],
+        [
+          "Type2",
+          22
+        ]
+      ],
+      "amenities": []
+    },
+    {
+      "externalId": "node/11578223404",
+      "name": "Zeal Energy Services Shivane",
+      "operator": "Zeal Energy Services",
+      "line1": "Nanded Shivane Link Road",
+      "locality": "Shivane",
+      "city": "Pune",
+      "state": "Maharashtra",
+      "pincode": "411024",
+      "lat": 18.460073,
+      "lng": 73.786174,
+      "pricePerKwh": 21.5,
+      "ports": [
+        [
+          "CCS2",
+          60
+        ],
+        [
+          "Type2",
+          22
+        ]
+      ],
+      "amenities": []
+    },
+    {
+      "externalId": "node/12334310661",
+      "name": "Kazam Warje",
+      "operator": "Kazam",
+      "line1": "Warje",
+      "locality": "Warje",
+      "city": "Pune",
+      "state": "Maharashtra",
+      "pincode": "411051",
+      "lat": 18.497962,
+      "lng": 73.794178,
+      "pricePerKwh": 21.5,
+      "ports": [
+        [
+          "CCS2",
+          60
+        ],
+        [
+          "Type2",
+          22
+        ]
+      ],
+      "amenities": []
+    },
+    {
+      "externalId": "node/12350373268",
+      "name": "EV Dock Hinjawadi",
+      "operator": "EV Dock",
+      "line1": "Hinjawadi Phase 1 road",
+      "locality": "Hinjawadi",
+      "city": "Pune",
+      "state": "Maharashtra",
+      "pincode": "411057",
+      "lat": 18.585792,
+      "lng": 73.734433,
+      "pricePerKwh": 19.5,
+      "ports": [
+        [
+          "CCS2",
+          60
+        ],
+        [
+          "Type2",
+          22
+        ]
+      ],
+      "amenities": [
+        "customers only"
+      ]
+    },
+    {
+      "externalId": "node/12350440058",
+      "name": "Shell Wakad gaav",
+      "operator": "Shell",
+      "line1": "Hinjawadi Road",
+      "locality": "Wakad gaav",
+      "city": "Pune",
+      "state": "Maharashtra",
+      "pincode": "411057",
+      "lat": 18.59076,
+      "lng": 73.741035,
+      "pricePerKwh": 19,
+      "ports": [
+        [
+          "CCS2",
+          60
+        ],
+        [
+          "Type2",
+          22
+        ],
+        [
+          "Type2",
+          22
+        ],
+        [
+          "Type2",
+          22
+        ],
+        [
+          "Type2",
+          22
+        ],
+        [
+          "Type2",
+          22
+        ],
+        [
+          "Type2",
+          22
+        ],
+        [
+          "Type2",
+          22
+        ]
+      ],
+      "amenities": [
+        "customers only"
+      ]
+    },
+    {
+      "externalId": "node/12350467611",
+      "name": "Bijlify Blue Ridge Town",
+      "operator": "Bijlify",
+      "line1": "Blue Ridge Town",
+      "locality": "Blue Ridge Town",
+      "city": "Pune",
+      "state": "Maharashtra",
+      "pincode": "411057",
+      "lat": 18.578172,
+      "lng": 73.736892,
+      "pricePerKwh": 13,
+      "ports": [
+        [
+          "Bharat-AC-001",
+          3.3
+        ],
+        [
+          "Bharat-AC-001",
+          3.3
+        ],
+        [
+          "Bharat-AC-001",
+          3.3
+        ],
+        [
+          "Bharat-AC-001",
+          3.3
+        ],
+        [
+          "Bharat-AC-001",
+          3.3
+        ],
+        [
+          "Bharat-AC-001",
+          3.3
+        ],
+        [
+          "Bharat-AC-001",
+          3.3
+        ],
+        [
+          "Bharat-AC-001",
+          3.3
+        ]
+      ],
+      "amenities": [
+        "customers only"
+      ]
+    },
+    {
+      "externalId": "node/12458871181",
+      "name": "Statiq Aundh",
+      "operator": "Statiq",
+      "line1": "Mahadji Shinde Marg",
+      "locality": "Aundh",
+      "city": "Pune",
+      "state": "Maharashtra",
+      "pincode": "411027",
+      "lat": 18.563893,
+      "lng": 73.807047,
+      "pricePerKwh": 19,
+      "ports": [
+        [
+          "CCS2",
+          60
+        ],
+        [
+          "Type2",
+          22
+        ],
+        [
+          "Type2",
+          22
+        ],
+        [
+          "Type2",
+          22
+        ],
+        [
+          "Type2",
+          22
+        ],
+        [
+          "Type2",
+          22
+        ],
+        [
+          "Type2",
+          22
+        ],
+        [
+          "Type2",
+          22
+        ]
+      ],
+      "amenities": [
+        "covered"
+      ]
+    },
+    {
+      "externalId": "node/12473454969",
+      "name": "Bijlify Deccan Gymkhana",
+      "operator": "Bijlify",
+      "line1": "Gopal Krushna Gokhale Path",
+      "locality": "Deccan Gymkhana",
+      "city": "Pune",
+      "state": "Maharashtra",
+      "pincode": "411004",
+      "lat": 18.522819,
+      "lng": 73.841053,
+      "pricePerKwh": 11.5,
+      "ports": [
+        [
+          "Bharat-AC-001",
+          3.3
+        ],
+        [
+          "Bharat-AC-001",
+          3.3
+        ]
+      ],
+      "amenities": []
+    },
+    {
+      "externalId": "way/359699641",
+      "name": "EV Charging Wakad gaav",
+      "operator": "Independent",
+      "line1": "Hinjawadi Road",
+      "locality": "Wakad gaav",
+      "city": "Pune",
+      "state": "Maharashtra",
+      "pincode": "411057",
+      "lat": 18.591255,
+      "lng": 73.748812,
+      "pricePerKwh": 19,
+      "ports": [
+        [
+          "CCS2",
+          60
+        ],
+        [
+          "Type2",
+          22
+        ]
+      ],
+      "amenities": []
+    },
+    {
+      "externalId": "way/360242628",
+      "name": "EV Charging Vishal Nagar",
+      "operator": "Independent",
+      "line1": "Wakad Road",
+      "locality": "Vishal Nagar",
+      "city": "Pune",
+      "state": "Maharashtra",
+      "pincode": "431027",
+      "lat": 18.588278,
+      "lng": 73.784882,
+      "pricePerKwh": 20,
+      "ports": [
+        [
+          "CCS2",
+          60
+        ]
+      ],
+      "amenities": []
+    },
+    {
+      "externalId": "way/1152420782",
+      "name": "Tata Power Bhujbal Chowk 3",
+      "operator": "Tata Power",
+      "line1": "Service Road",
+      "locality": "Bhujbal Chowk",
+      "city": "Pune",
+      "state": "Maharashtra",
+      "pincode": "410005",
+      "lat": 18.616579,
+      "lng": 73.747623,
+      "pricePerKwh": 19,
+      "ports": [
+        [
+          "CCS2",
+          60
+        ],
+        [
+          "Type2",
+          22
+        ]
+      ],
+      "amenities": []
+    },
+    {
+      "externalId": "way/1152421163",
+      "name": "Tata Power Punawale",
+      "operator": "Tata Power",
+      "line1": "Service Road",
+      "locality": "Punawale",
+      "city": "Pune",
+      "state": "Maharashtra",
+      "pincode": "410005",
+      "lat": 18.623403,
+      "lng": 73.745477,
+      "pricePerKwh": 19.5,
+      "ports": [
+        [
+          "CCS2",
+          60
+        ],
+        [
+          "Type2",
+          22
+        ]
+      ],
+      "amenities": []
+    },
+    {
+      "externalId": "way/1152424877",
+      "name": "EV Charging Kalewadi",
+      "operator": "Independent",
+      "line1": "Kalewadi",
+      "locality": "Kalewadi",
+      "city": "Pune",
+      "state": "Maharashtra",
+      "pincode": "431027",
+      "lat": 18.599467,
+      "lng": 73.78077,
+      "pricePerKwh": 20,
+      "ports": [
+        [
+          "CCS2",
+          60
+        ]
+      ],
+      "amenities": []
+    },
+    {
+      "externalId": "way/1152427340",
+      "name": "EV Charging Old Sangvi",
+      "operator": "Independent",
+      "line1": "Pimple Gurav-Navi Sangvi Road",
+      "locality": "Old Sangvi",
+      "city": "Pune",
+      "state": "Maharashtra",
+      "pincode": "411061",
+      "lat": 18.580774,
+      "lng": 73.815809,
+      "pricePerKwh": 21,
+      "ports": [
+        [
+          "CCS2",
+          60
+        ]
+      ],
+      "amenities": []
+    },
+    {
+      "externalId": "way/1221529119",
+      "name": "Shell EV Charging Station",
+      "operator": "Shell",
+      "line1": "Sinhagad Road",
+      "locality": "Vadgaon Budruk",
+      "city": "Pune",
+      "state": "Maharashtra",
+      "pincode": "411051",
+      "lat": 18.457177,
+      "lng": 73.805392,
+      "pricePerKwh": 19.5,
+      "ports": [
+        [
+          "CCS2",
+          60
+        ],
+        [
+          "Type2",
+          22
+        ]
+      ],
+      "amenities": []
+    },
+    {
+      "externalId": "way/1222357597",
+      "name": "EV Charging Blue Ridge SEZ",
+      "operator": "Independent",
+      "line1": "Blue Ridge SEZ",
+      "locality": "Blue Ridge SEZ",
+      "city": "Pune",
+      "state": "Maharashtra",
+      "pincode": "411057",
+      "lat": 18.57947,
+      "lng": 73.73858,
+      "pricePerKwh": 21,
+      "ports": [
+        [
+          "CCS2",
+          60
+        ],
+        [
+          "Type2",
+          22
+        ],
+        [
+          "Type2",
+          22
+        ],
+        [
+          "Type2",
+          22
+        ],
+        [
+          "Type2",
+          22
+        ],
+        [
+          "Type2",
+          22
+        ],
+        [
+          "Type2",
+          22
+        ]
+      ],
+      "amenities": []
+    },
+    {
+      "externalId": "way/1250660872",
+      "name": "O S Overseas Pune",
+      "operator": "O S Overseas",
+      "line1": "Pune",
+      "locality": "Pune",
+      "city": "Pune",
+      "state": "Maharashtra",
+      "pincode": "412200",
+      "lat": 18.492614,
+      "lng": 73.999057,
+      "pricePerKwh": 21.5,
+      "ports": [
+        [
+          "CCS2",
+          60
+        ],
+        [
+          "Type2",
+          22
+        ]
+      ],
+      "amenities": [
+        "covered",
+        "customers only"
+      ]
+    }
+  ]
+}

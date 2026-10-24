@@ -13,6 +13,7 @@ import type { Request, Response } from 'express';
 import * as trips from '../services/tripService';
 import { currentUser } from '../middleware/auth';
 import { created, ok } from '../utils/respond';
+import { tripJSON } from '../models/Trip';
 
 /** GET /api/trips?limit=&before= */
 export async function listTrips(req: Request, res: Response): Promise<void> {
@@ -26,14 +27,14 @@ export async function listTrips(req: Request, res: Response): Promise<void> {
 export async function createTrip(req: Request, res: Response): Promise<void> {
   const user = currentUser(req);
   const trip = await trips.recordTrip(user.id, req.body as trips.RecordTripInput);
-  created(res, { trip: trip.toJSON() });
+  created(res, { trip: tripJSON(trip) });
 }
 
 /** GET /api/trips/:id */
 export async function getTrip(req: Request, res: Response): Promise<void> {
   const user = currentUser(req);
   const trip = await trips.getTrip(user.id, req.params.id);
-  ok(res, { trip: trip.toJSON() });
+  ok(res, { trip: tripJSON(trip) });
 }
 
 /** DELETE /api/trips/:id — unlink one node, re-pointing its newer neighbour. */

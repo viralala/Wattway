@@ -4,19 +4,19 @@
  * stations.test.ts — station CRUD, the port board, and index coherence.
  *
  * The last group is the important one: every write path has to leave the
- * in-memory BST/Trie agreeing with MongoDB, or search quietly serves stale
+ * in-memory BST/Trie agreeing with Postgres, or search quietly serves stale
  * data. These tests are what stop that regressing.
  * ---------------------------------------------------------------------------
  */
 
 import request from 'supertest';
 import { app } from '../../src/app';
-import { Station } from '../../src/models/Station';
-import { User } from '../../src/models/User';
+import { Stations } from '../../src/models/Station';
+import { Users, toAuthUser } from '../../src/models/User';
 import { stationIndex } from '../../src/services/stationIndex';
 import { signAccessToken } from '../../src/services/tokenService';
 import { clearTestDatabase, startTestDatabase, stopTestDatabase, syncIndexes } from '../helpers/db';
-import { makeStationBody, makeUserBody } from '../helpers/factories';
+import { makeStationBody, makeUserBody, testId } from '../helpers/factories';
 
 let operatorToken: string;
 let otherOperatorToken: string;
@@ -34,31 +34,27 @@ afterAll(async () => {
 });
 
 beforeEach(async () => {
-  const operator = await User.create({
-    ...makeUserBody({ email: 'op1@wattway.test' }),
-    passwordHash: 'kothimbir123',
+  const operator = await Users.create({
+    ...(makeUserBody({ email: 'op1@wattway.test' }) as { name: string; email: string; password: string }),
     role: 'operator',
   });
-  const otherOperator = await User.create({
-    ...makeUserBody({ email: 'op2@wattway.test' }),
-    passwordHash: 'kothimbir123',
+  const otherOperator = await Users.create({
+    ...(makeUserBody({ email: 'op2@wattway.test' }) as { name: string; email: string; password: string }),
     role: 'operator',
   });
-  const driver = await User.create({
-    ...makeUserBody({ email: 'driver@wattway.test' }),
-    passwordHash: 'kothimbir123',
+  const driver = await Users.create({
+    ...(makeUserBody({ email: 'driver@wattway.test' }) as { name: string; email: string; password: string }),
     role: 'driver',
   });
-  const admin = await User.create({
-    ...makeUserBody({ email: 'admin@wattway.test' }),
-    passwordHash: 'kothimbir123',
+  const admin = await Users.create({
+    ...(makeUserBody({ email: 'admin@wattway.test' }) as { name: string; email: string; password: string }),
     role: 'admin',
   });
 
-  operatorToken = signAccessToken(operator.toAuthUser());
-  otherOperatorToken = signAccessToken(otherOperator.toAuthUser());
-  driverToken = signAccessToken(driver.toAuthUser());
-  adminToken = signAccessToken(admin.toAuthUser());
+  operatorToken = signAccessToken(toAuthUser(operator));
+  otherOperatorToken = signAccessToken(toAuthUser(otherOperator));
+  driverToken = signAccessToken(toAuthUser(driver));
+  adminToken = signAccessToken(toAuthUser(admin));
 
   stationIndex.reset();
 });
@@ -190,7 +186,7 @@ describe('GET /api/stations/:id', () => {
   });
 
   it('404s for an unknown id', async () => {
-    const response = await request(app).get(`/api/stations/${'a'.repeat(24)}`);
+    const response = await request(app).get(`/api/stations/${testId()}`);
     expect(response.status).toBe(404);
   });
 
@@ -252,8 +248,8 @@ describe('DELETE /api/stations/:id', () => {
       .set('Authorization', `Bearer ${operatorToken}`);
 
     expect(response.status).toBe(200);
-    expect(await Station.findById(id).exec()).not.toBeNull(); // still there
-    expect((await Station.findById(id).exec())!.isActive).toBe(false);
+    expect(await Stations.findById(id)).not.toBeNull(); // still there
+    expect((await Stations.findById(id))!.isActive).toBe(false);
     expect((await request(app).get(`/api/stations/${id}`)).status).toBe(404);
   });
 });
@@ -314,7 +310,7 @@ describe('PATCH /api/stations/:id/ports/:portIndex — the Array in action', () 
 });
 
 describe('POST /api/stations/:id/rating', () => {
-  it('updates the running mean', async () => {
+  it('updates the running mean across different users', async () => {
     const created = await createStation();
     const id = created.body.data.station.id;
 
@@ -325,11 +321,33 @@ describe('POST /api/stations/:id/rating', () => {
 
     const response = await request(app)
       .post(`/api/stations/${id}/rating`)
-      .set('Authorization', `Bearer ${driverToken}`)
+      .set('Authorization', `Bearer ${adminToken}`)
       .send({ rating: 3 });
 
     expect(response.status).toBe(200);
     expect(response.body.data.rating).toEqual({ average: 4, count: 2 });
+  });
+
+  it('replaces the earlier score of a user instead of counting it twice', async () => {
+    const created = await createStation();
+    const id = created.body.data.station.id;
+
+    await request(app)
+      .post(`/api/stations/${id}/rating`)
+      .set('Authorization', `Bearer ${driverToken}`)
+      .send({ rating: 5 });
+    await request(app)
+      .post(`/api/stations/${id}/rating`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ rating: 3 });
+
+    const response = await request(app)
+      .post(`/api/stations/${id}/rating`)
+      .set('Authorization', `Bearer ${driverToken}`)
+      .send({ rating: 1 });
+
+    expect(response.status).toBe(200);
+    expect(response.body.data.rating).toEqual({ average: 2, count: 2 });
   });
 
   it('rejects an out-of-range rating', async () => {
@@ -429,15 +447,15 @@ describe('index coherence — every write keeps the BST and Trie in step', () =>
   });
 
   it('rebuilds from the database, picking up out-of-band writes', async () => {
-    // Written straight to Mongo, bypassing the controller — exactly what the
+    // Written straight to Postgres, bypassing the controller — exactly what the
     // scheduled rebuild exists to catch.
-    await Station.create({
+    await Stations.create({
       name: 'Smuggled In',
       operator: 'Direct Insert',
       address: { line1: '1 Road', locality: 'Nowhere', city: 'Mumbai', state: 'Maharashtra' },
-      location: { type: 'Point', coordinates: [72.8777, 19.076] },
+      location: { lat: 19.076, lng: 72.8777 },
       pricePerKwh: 7,
-      ports: [{ index: 0, connectorType: 'CCS2', powerKw: 60, status: 'free' }],
+      ports: [{ index: 0, connectorType: 'CCS2', powerKw: 60, status: 'free', occupiedSince: null }],
     });
 
     expect(stationIndex.size).toBe(0);

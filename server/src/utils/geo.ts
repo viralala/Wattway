@@ -15,7 +15,7 @@ export interface LatLng {
   lng: number;
 }
 
-/** GeoJSON Point, which is what MongoDB's 2dsphere index expects. */
+/** GeoJSON Point: the API's location shape (`coordinates` is [lng, lat]). */
 export interface GeoPoint {
   type: 'Point';
   /** IMPORTANT: GeoJSON order is [longitude, latitude], not [lat, lng]. */

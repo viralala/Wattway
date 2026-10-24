@@ -28,11 +28,11 @@ the other three modules plug into:
 | --- | --- |
 | Data structures | `BST.ts` (price + rating range index), `Trie.ts` (autocomplete) — from scratch, 63 unit tests |
 | Algorithms | `rangeQuery.ts` (with a selectivity-based index planner), `autocomplete.ts` (two-stage ranking) |
-| Database | Mongoose models for `User`, `Station`, `Trip`, `QueueEntry` |
+| Database | Postgres (Supabase) repositories for users, stations, trips, queue entries — schema in `server/db/schema.sql` |
 | Auth | JWT access + refresh, bcrypt, roles, per-station operator authorisation |
 | API | Express app, validation, error handling, rate limiting, response envelope |
 | Realtime | Socket.IO transport + handshake auth (events left for the queue module) |
-| Tests | 201 passing — unit + integration against a real in-memory MongoDB |
+| Tests | unit + integration against a real in-memory Postgres (PGlite) |
 
 Run it before you change it:
 
@@ -59,7 +59,7 @@ wattway/
 │   ├── src/
 │   │   ├── datastructures/     # from-scratch DS. NO LIBRARIES.
 │   │   ├── algorithms/         # pure functions over those DS
-│   │   ├── models/             # Mongoose schemas
+│   │   ├── models/             # table repositories (SQL)
 │   │   ├── controllers/        # request handlers
 │   │   ├── routes/             # routers + Zod schemas
 │   │   ├── middleware/         # auth, validation, errors      [added]
@@ -245,7 +245,7 @@ boundary. If you need instant revocation on a route, add `requireFreshUser`.
 
 ## 6. The rule that will bite you
 
-**Every write to a station must keep the in-memory index in step with MongoDB.**
+**Every write to a station must keep the in-memory index in step with Postgres.**
 
 ```ts
 await station.save();

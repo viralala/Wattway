@@ -7,23 +7,26 @@
 import { useEffect, useMemo, useState } from 'react';
 import { DayChart } from '../components/dashboard/DayChart';
 import { DistanceMatrix } from '../components/dashboard/DistanceMatrix';
+import { OfflineNotice } from '../components/OfflineNotice';
 import { Button, PageHead } from '../components/ui';
+import { useAuth } from '../context/AuthContext';
+import { useStations } from '../hooks/useStations';
+import { canManageStations } from '../services/auth';
 import {
   getDayStats,
   getDistanceTable,
   getOperatorSnapshot,
-  OPERATORS,
+  listOperators,
   removeFromQueue,
   resetDemo,
-  ROAD_LINKS,
   setPortStatus,
   type HourStat,
   type OpPort,
   type OpStation,
   type PortAction,
 } from '../services/dashboard';
-import { SAMPLE_STATIONS } from '../services/stations';
-import { pathBetween, type AllPairs } from '../utils/floyd';
+import { pathBetween, type AllPairs, type Edge } from '../utils/floyd';
+import { Link } from 'react-router-dom';
 import type { Station } from '../services/stations';
 import '../styles/stations.css';
 import '../styles/dashboard.css';
@@ -114,13 +117,15 @@ function StationPanel({
                 <span>
                   {i + 1}. <span className="mono">{w.plate}</span> <small className="muted">· {w.waitingMin} min</small>
                 </span>
-                <button
-                  className="btn btn-ghost btn-sm"
-                  onClick={() => onRemove(w.plate)}
-                  aria-label={`Remove ${w.plate} from the line`}
-                >
-                  Remove
-                </button>
+                {!op.live && (
+                  <button
+                    className="btn btn-ghost btn-sm"
+                    onClick={() => onRemove(w.plate)}
+                    aria-label={`Remove ${w.plate} from the line`}
+                  >
+                    Remove
+                  </button>
+                )}
               </li>
             ))}
           </ol>
@@ -142,16 +147,17 @@ interface Suggestion {
  * (by Floyd–Warshall road distance) that has a free port right now.
  */
 function suggestions(ops: OpStation[], table: AllPairs & { stations: Station[] }): Suggestion[] {
-  const live = new Map<string, Station>(SAMPLE_STATIONS.map((s) => [s.id, s]));
+  const live = new Map<string, Station>(table.stations.map((s) => [s.id, s]));
   for (const op of ops) live.set(op.station.id, op.station);
   const out: Suggestion[] = [];
   for (const op of ops) {
     if (op.station.freePorts > 0 || op.waiting.length === 0) continue;
     const i = table.ids.indexOf(op.station.id);
     let best: Suggestion | null = null;
+    if (i < 0) continue;
     for (let j = 0; j < table.ids.length; j += 1) {
       const s = live.get(table.ids[j]) as Station;
-      if (j === i || s.freePorts === 0) continue;
+      if (j === i || s.freePorts === 0 || !Number.isFinite(table.dist[i][j])) continue;
       const km = table.dist[i][j];
       if (!best || km < best.km) best = { from: op.station, to: s, km, hops: pathBetween(table, i, j).length - 2 };
     }
@@ -161,39 +167,60 @@ function suggestions(ops: OpStation[], table: AllPairs & { stations: Station[] }
 }
 
 export default function Dashboard() {
-  const [operator, setOperator] = useState('AmpYard');
+  const { user } = useAuth();
+  const { stations, offline } = useStations();
+  const [operators, setOperators] = useState<string[]>([]);
+  const [operator, setOperator] = useState('');
   const [ops, setOps] = useState<OpStation[] | null>(null);
   const [stats, setStats] = useState<HourStat[]>([]);
-  const [table, setTable] = useState<(AllPairs & { stations: Station[] }) | null>(null);
+  const [table, setTable] = useState<(AllPairs & { stations: Station[]; links: Edge[] }) | null>(null);
   const [message, setMessage] = useState('');
+  const remote = !offline && canManageStations(user);
 
   useEffect(() => {
+    if (stations === null) return;
+    listOperators().then(({ operators: list }) => {
+      setOperators(list);
+      // Pick the signed-in operator's own company when we can tell, else the first.
+      setOperator((cur) => (cur && list.includes(cur) ? cur : (list.includes('AmpYard') ? 'AmpYard' : list[0] ?? '')));
+    });
+    getDistanceTable().then(setTable);
+  }, [stations]);
+
+  useEffect(() => {
+    if (!operator) return undefined;
     let live = true;
     setMessage('');
-    Promise.all([getOperatorSnapshot(operator), getDayStats(operator)]).then(([o, s]) => {
-      if (!live) return;
-      setOps(o);
-      setStats(s);
-    });
+    getOperatorSnapshot(operator)
+      .then(async (o) => {
+        const s = await getDayStats(operator, o);
+        if (!live) return;
+        setOps(o);
+        setStats(s);
+      })
+      .catch((e: Error) => live && setMessage(e.message));
     return () => {
       live = false;
     };
   }, [operator]);
 
-  useEffect(() => {
-    getDistanceTable().then(setTable);
-  }, []);
-
   const replace = (next: OpStation) => setOps((cur) => cur?.map((o) => (o.station.id === next.station.id ? next : o)) ?? cur);
 
   const onPort = async (op: OpStation, index: number, action: PortAction) => {
     const before = op.waiting[0]?.plate;
-    const next = await setPortStatus(op.station.id, index, action);
+    let next: OpStation;
+    try {
+      next = await setPortStatus(op.station.id, index, action, remote);
+    } catch (e) {
+      setMessage(e instanceof Error ? e.message : 'That change didn’t go through.');
+      return;
+    }
     replace(next);
     const port = next.ports[index];
     const verb = { fault: 'marked faulted', restore: 'back in service', end: 'session ended' }[action];
     const handedOn = port.status === 'occupied' && port.plate === before ? ` ${before} came off the front of the line and took it.` : '';
-    setMessage(`P${index + 1} at ${op.station.name}: ${verb}.${handedOn}`);
+    const local = op.live && !remote ? ' (this session only: sign in as an operator to save it)' : '';
+    setMessage(`P${index + 1} at ${op.station.name}: ${verb}.${handedOn}${local}`);
   };
 
   const onRemove = async (op: OpStation, plate: string) => {
@@ -224,7 +251,7 @@ export default function Dashboard() {
   }, [ops]);
 
   const tips = useMemo(() => (ops && table ? suggestions(ops, table) : []), [ops, table]);
-  const mine = useMemo(() => new Set(SAMPLE_STATIONS.filter((s) => s.operator === operator).map((s) => s.id)), [operator]);
+  const mine = useMemo(() => new Set((stations ?? []).filter((s) => s.operator === operator).map((s) => s.id)), [stations, operator]);
 
   return (
     <div className="container page-operators">
@@ -234,16 +261,27 @@ export default function Dashboard() {
           end an overstaying session, clear no-shows from the line, and find the nearest station to send drivers to.
         </PageHead>
 
-        <p className="notice st-sample" role="note">
-          Demo operator view with sample data. In the real app this page needs an operator login and shows only the
-          stations you manage. Changes here last until you reload.
-        </p>
+        {offline ? (
+          <OfflineNotice />
+        ) : (
+          <p className="notice st-sample" role="note">
+            {remote ? (
+              <>Signed in as {user?.name} ({user?.role}): port changes are saved to the live API for stations you manage.</>
+            ) : (
+              <>
+                Read-only live view. <Link to="/account" state={{ from: '/dashboard' }}>Sign in as an operator</Link> to
+                change ports; until then edits last only for this session. Removing drivers from a line isn’t available
+                yet.
+              </>
+            )}
+          </p>
+        )}
 
         <div className="db-toolbar">
           <div className="field">
             <label htmlFor="db-operator">Operator</label>
             <select id="db-operator" className="select" value={operator} onChange={(e) => setOperator(e.target.value)}>
-              {OPERATORS.map((o) => (
+              {operators.map((o) => (
                 <option key={o} value={o}>
                   {o}
                 </option>
@@ -293,7 +331,7 @@ export default function Dashboard() {
         <div className="db-row">
           <section className="card" aria-labelledby="db-today">
             <h3 id="db-today">Today, hour by hour</h3>
-            <p className="muted db-sub">Sample data for {operator}’s stations.</p>
+            <p className="muted db-sub">A typical-day curve scaled to {operator}’s current load (no history endpoint yet).</p>
             <DayChart stats={stats} />
           </section>
 
@@ -341,7 +379,7 @@ export default function Dashboard() {
         <section className="db-section card" aria-labelledby="db-fw-title">
           <h2 id="db-fw-title">Road distance between every pair of stations</h2>
           <p className="db-fw-intro">
-            Floyd–Warshall over {ROAD_LINKS.length} road links between {SAMPLE_STATIONS.length} stations. It tries every
+            Floyd–Warshall over {table ? table.links.length : '…'} estimated road links between {table ? table.stations.length : '…'} stations. It tries every
             station k as a stopover for every pair (i, j), so it runs V³ ={' '}
             {table ? table.relaxations.toLocaleString('en-IN') : '…'} steps once and then answers any pair instantly.
             Your stations are highlighted; darker cells are farther apart.

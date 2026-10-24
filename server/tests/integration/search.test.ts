@@ -11,7 +11,7 @@
 
 import request from 'supertest';
 import { app } from '../../src/app';
-import { Station } from '../../src/models/Station';
+import { Stations } from '../../src/models/Station';
 import { stationIndex } from '../../src/services/stationIndex';
 import { clearTestDatabase, startTestDatabase, stopTestDatabase, syncIndexes } from '../helpers/db';
 import type { ConnectorType } from '../../src/types';
@@ -98,8 +98,8 @@ beforeAll(async () => {
   await startTestDatabase();
   await syncIndexes();
 
-  await Station.insertMany(
-    FIXTURES.map((fixture) => ({
+  for (const fixture of FIXTURES) {
+    await Stations.create({
       name: fixture.name,
       operator: 'Tata Power',
       address: {
@@ -108,7 +108,7 @@ beforeAll(async () => {
         city: fixture.city,
         state: fixture.city === 'Pune' ? 'Maharashtra' : 'Maharashtra',
       },
-      location: { type: 'Point', coordinates: [fixture.lng, fixture.lat] },
+      location: { lat: fixture.lat, lng: fixture.lng },
       pricePerKwh: fixture.price,
       rating: { average: fixture.rating, count: fixture.ratingCount },
       ports: Array.from({ length: 4 }, (_, index) => ({
@@ -120,8 +120,8 @@ beforeAll(async () => {
       })),
       amenities: [],
       isActive: true,
-    })),
-  );
+    });
+  }
 
   await stationIndex.rebuildFromDatabase();
 });

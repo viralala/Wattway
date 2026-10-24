@@ -16,14 +16,21 @@
  */
 
 import type { Request, Response } from 'express';
-import { Station } from '../models/Station';
-import { User } from '../models/User';
+import {
+  Stations,
+  freePorts,
+  setPortStatus as flipPort,
+  stationJSON,
+  toIndexed,
+  totalPorts,
+} from '../models/Station';
+import { Users } from '../models/User';
 import { stationIndex } from '../services/stationIndex';
 import { ApiError } from '../utils/ApiError';
 import { created, ok, paginate } from '../utils/respond';
 import { currentUser } from '../middleware/auth';
 import { haversineKm, isValidLatLng, type LatLng } from '../utils/geo';
-import type { ConnectorType, PortStatus, StationResult } from '../types';
+import type { ConnectorType, Port, PortStatus, StationResult } from '../types';
 
 interface PortInput {
   connectorType: ConnectorType;
@@ -77,34 +84,17 @@ export async function listStations(req: Request, res: Response): Promise<void> {
     radiusKm?: number;
   };
 
-  const filter: Record<string, unknown> = { isActive: true };
-  if (city) filter['address.city'] = new RegExp(`^${escapeRegex(city)}$`, 'i');
-  if (operator) filter.operator = new RegExp(`^${escapeRegex(operator)}$`, 'i');
-  if (connectorType) filter['ports.connectorType'] = connectorType;
-
   const near: LatLng | undefined =
     lat !== undefined && lng !== undefined && isValidLatLng({ lat, lng }) ? { lat, lng } : undefined;
 
-  if (near && radiusKm !== undefined) {
-    filter.location = {
-      $geoWithin: {
-        // $centerSphere takes a radius in radians: km / Earth radius.
-        $centerSphere: [[near.lng, near.lat], radiusKm / 6371],
-      },
-    };
-  }
+  const { stations: rows, total } = await Stations.page(
+    { city, operator, connectorType, ...(near && radiusKm !== undefined ? { near, radiusKm } : {}) },
+    page,
+    limit,
+  );
 
-  const [documents, total] = await Promise.all([
-    Station.find(filter)
-      .sort({ 'rating.average': -1 })
-      .skip((page - 1) * limit)
-      .limit(limit)
-      .exec(),
-    Station.countDocuments(filter).exec(),
-  ]);
-
-  const stations: StationResult[] = documents.map((document) => {
-    const indexed = document.toIndexed();
+  const stations: StationResult[] = rows.map((row) => {
+    const indexed: StationResult = { ...toIndexed(row), ports: row.ports, source: row.source };
     return near
       ? { ...indexed, distanceKm: round(haversineKm(near, indexed.location), 3) }
       : indexed;
@@ -115,115 +105,73 @@ export async function listStations(req: Request, res: Response): Promise<void> {
   ok(res, { stations }, { pagination: paginate(page, limit, total) });
 }
 
-/** GET /api/stations/:id */
 export async function getStation(req: Request, res: Response): Promise<void> {
-  const station = await Station.findById(req.params.id).exec();
+  const station = await Stations.findById(req.params.id);
   if (!station || !station.isActive) throw ApiError.notFound('Station not found');
-  ok(res, { station: station.toJSON() });
+  ok(res, { station: stationJSON(station) });
 }
 
-/** POST /api/stations — operator or admin. */
 export async function createStation(req: Request, res: Response): Promise<void> {
   const actor = currentUser(req);
   const body = req.body as StationBody;
 
-  const station = await Station.create({
+  const station = await Stations.create({
     name: body.name,
     operator: body.operator,
     address: body.address,
-    location: { type: 'Point', coordinates: [body.location.lng, body.location.lat] },
+    location: body.location,
     pricePerKwh: body.pricePerKwh,
-    // The fixed-size port board. Index is assigned here, once, and is the
-    // array position every later O(1) port update relies on.
-    ports: body.ports.map((port, index) => ({
-      index,
-      connectorType: port.connectorType,
-      powerKw: port.powerKw,
-      status: port.status ?? 'free',
-      occupiedSince: null,
-    })),
+    ports: toPorts(body.ports),
     amenities: body.amenities ?? [],
     ...(body.graphNodeId ? { graphNodeId: body.graphNodeId } : {}),
     managedBy: actor.id,
   });
 
-  // Mirror the link onto the operator so "my stations" is a single read.
-  if (actor.role === 'operator') {
-    await User.updateOne({ _id: actor.id }, { $addToSet: { operatorOf: station._id } }).exec();
-  }
+  if (actor.role === 'operator') await Users.addOperatorOf(actor.id, station.id);
 
-  stationIndex.upsert(station.toIndexed());
-  created(res, { station: station.toJSON() });
+  stationIndex.upsert(toIndexed(station));
+  created(res, { station: stationJSON(station) });
 }
 
-/** PATCH /api/stations/:id — operator (own stations) or admin. */
 export async function updateStation(req: Request, res: Response): Promise<void> {
-  const station = await Station.findById(req.params.id).exec();
+  const station = await Stations.findById(req.params.id);
   if (!station) throw ApiError.notFound('Station not found');
 
   const body = req.body as Partial<StationBody> & { isActive?: boolean };
 
   if (body.name !== undefined) station.name = body.name;
   if (body.operator !== undefined) station.operator = body.operator;
-  if (body.address !== undefined) station.set('address', body.address);
+  if (body.address !== undefined) station.address = body.address;
   if (body.pricePerKwh !== undefined) station.pricePerKwh = body.pricePerKwh;
   if (body.amenities !== undefined) station.amenities = body.amenities;
   if (body.graphNodeId !== undefined) station.graphNodeId = body.graphNodeId;
   if (body.isActive !== undefined) station.isActive = body.isActive;
-
   if (body.location !== undefined) {
     station.location = { type: 'Point', coordinates: [body.location.lng, body.location.lat] };
   }
+  if (body.ports !== undefined) station.ports = toPorts(body.ports);
 
-  // Replacing the port board renumbers it, so any live queue assignment
-  // referencing an old port index is invalidated by design.
-  if (body.ports !== undefined) {
-    station.ports = body.ports.map((port, index) => ({
-      index,
-      connectorType: port.connectorType,
-      powerKw: port.powerKw,
-      status: port.status ?? 'free',
-      occupiedSince: null,
-    }));
-  }
+  await Stations.save(station);
 
-  await station.save();
+  if (station.isActive) stationIndex.upsert(toIndexed(station));
+  else stationIndex.remove(station.id);
 
-  // A price or name change moves this station in the BST and the trie.
-  if (station.isActive) stationIndex.upsert(station.toIndexed());
-  else stationIndex.remove(station._id.toString());
-
-  ok(res, { station: station.toJSON() });
+  ok(res, { station: stationJSON(station) });
 }
 
-/**
- * DELETE /api/stations/:id
- *
- * Soft delete. Trips and queue history reference stations, and hard-deleting
- * one would leave those rows pointing at nothing.
- */
 export async function deactivateStation(req: Request, res: Response): Promise<void> {
-  const station = await Station.findById(req.params.id).exec();
+  const station = await Stations.findById(req.params.id);
   if (!station) throw ApiError.notFound('Station not found');
 
   station.isActive = false;
-  await station.save();
-  stationIndex.remove(station._id.toString());
+  await Stations.save(station);
+  stationIndex.remove(station.id);
 
-  ok(res, { id: station._id.toString(), isActive: false });
+  ok(res, { id: station.id, isActive: false });
 }
 
-/**
- * PATCH /api/stations/:id/ports/:portIndex
- *
- * The Array data structure in action (PRD Section 5): O(1) addressing into a
- * fixed-size slot board to flip one port's state.
- *
- * The queue module will call this when a session starts or ends; an operator
- * calls it from the dashboard to mark a charger faulted.
- */
 export async function setPortStatus(req: Request, res: Response): Promise<void> {
-  const station = await Station.findById(req.params.id).exec();
+  const station = await Stations.findById(req.params.id);
   if (!station) throw ApiError.notFound('Station not found');
 
   const portIndex = Number(req.params.portIndex);
@@ -231,58 +179,54 @@ export async function setPortStatus(req: Request, res: Response): Promise<void> 
 
   let port;
   try {
-    port = station.setPortStatus(portIndex, status);
+    port = flipPort(station, portIndex, status);
   } catch (error) {
     if (error instanceof RangeError) throw ApiError.notFound(error.message);
     throw error;
   }
 
-  await station.save();
+  await Stations.save(station);
 
-  // Free-port count feeds the recommendation score, so the index must see it.
-  stationIndex.upsert(station.toIndexed());
+  stationIndex.upsert(toIndexed(station));
 
   ok(res, {
-    stationId: station._id.toString(),
+    stationId: station.id,
     port,
-    freePorts: station.freePorts,
-    totalPorts: station.totalPorts,
+    freePorts: freePorts(station),
+    totalPorts: totalPorts(station),
   });
 }
 
 /**
- * POST /api/stations/:id/rating — any signed-in driver.
- *
- * Kept as a running mean rather than a separate reviews collection: the second
- * BST is keyed on `rating.average`, and a running mean updates it in O(1)
- * without re-aggregating anything.
+ * POST /api/stations/:id/rating — one rating per driver per station; rating
+ * again replaces the earlier score. The average is recomputed from the
+ * ratings table in the same statement, so it can never drift.
  */
 export async function rateStation(req: Request, res: Response): Promise<void> {
-  const station = await Station.findById(req.params.id).exec();
+  const actor = currentUser(req);
+  const station = await Stations.findById(req.params.id);
   if (!station || !station.isActive) throw ApiError.notFound('Station not found');
 
   const { rating } = req.body as { rating: number };
+  const updated = await Stations.rate(station.id, actor.id, rating);
+  if (!updated) throw ApiError.notFound('Station not found');
 
-  const total = station.rating.average * station.rating.count + rating;
-  station.rating.count += 1;
-  station.rating.average = round(total / station.rating.count, 2);
+  stationIndex.upsert(toIndexed(updated));
 
-  await station.save();
-
-  // The rating BST is keyed on this value, so the station has to move buckets.
-  stationIndex.upsert(station.toIndexed());
-
-  ok(res, { stationId: station._id.toString(), rating: station.rating });
+  ok(res, { stationId: updated.id, rating: updated.rating });
 }
 
-// ─── Helpers ────────────────────────────────────────────────────────────────
+function toPorts(ports: PortInput[]): Port[] {
+  return ports.map((port, index) => ({
+    index,
+    connectorType: port.connectorType,
+    powerKw: port.powerKw,
+    status: port.status ?? 'free',
+    occupiedSince: null,
+  }));
+}
 
 function round(value: number, decimals: number): number {
   const factor = 10 ** decimals;
   return Math.round(value * factor) / factor;
-}
-
-/** Never interpolate user input into a RegExp unescaped. */
-function escapeRegex(input: string): string {
-  return input.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }

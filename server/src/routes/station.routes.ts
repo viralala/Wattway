@@ -17,11 +17,11 @@ import { asyncHandler } from '../middleware/asyncHandler';
 import { optionalAuth, requireAuth, requireRole, requireStationAccess } from '../middleware/auth';
 import { validate } from '../middleware/validate';
 import { CONNECTOR_TYPES, PORT_STATUSES } from '../types';
-import { zLat, zLimit, zLng, zNumber, zObjectId, zPage } from '../utils/zod';
+import { zLat, zLimit, zLng, zNumber, zId, zPage } from '../utils/zod';
 
 const router = Router();
 
-const idParam = z.object({ id: zObjectId });
+const idParam = z.object({ id: zId });
 
 const listQuery = z
   .object({
@@ -78,7 +78,7 @@ const updateStationSchema = createStationSchema
   .refine((body) => Object.keys(body).length > 0, 'Provide at least one field to update');
 
 const portParams = z.object({
-  id: zObjectId,
+  id: zId,
   portIndex: z.coerce.number().int().min(0).max(31),
 });
 

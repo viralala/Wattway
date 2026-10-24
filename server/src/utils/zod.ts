@@ -45,10 +45,10 @@ export const zPage = z.coerce.number().int().min(1).default(1);
 export const zLimit = (max = 100, fallback = 20) =>
   z.coerce.number().int().min(1).max(max).default(fallback);
 
-/** A 24-character hex MongoDB ObjectId. */
-export const zObjectId = z
+/** A resource id: a Postgres UUID. */
+export const zId = z
   .string()
-  .regex(/^[0-9a-fA-F]{24}$/, 'Must be a valid 24-character resource id');
+  .regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i, 'Must be a valid resource id');
 
 /**
  * Passwords. Long enough to resist a dictionary attack, with one class rule so

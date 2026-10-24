@@ -22,9 +22,12 @@
  * ============================================================================
  */
 
-import { connectDatabase, disconnectDatabase } from '../src/config/db';
-import { Station } from '../src/models/Station';
-import { User } from '../src/models/User';
+import fs from 'node:fs';
+import path from 'node:path';
+import { connectDatabase, db, disconnectDatabase } from '../src/config/db';
+import { Stations, type StationInput } from '../src/models/Station';
+import { Users } from '../src/models/User';
+import type { OsmStation } from './import-osm';
 import { logger } from '../src/utils/logger';
 import { BRAND } from '../src/config/brand';
 import type { ConnectorType, PortStatus } from '../src/types';
@@ -481,6 +484,13 @@ const USERS = [
   },
 ];
 
+/** Real Pune stations from OpenStreetMap (see scripts/import-osm.ts). */
+function osmStations(): OsmStation[] {
+  const file = path.resolve(__dirname, '../db/stations-osm.json');
+  if (!fs.existsSync(file)) return [];
+  return (JSON.parse(fs.readFileSync(file, 'utf8')) as { stations: OsmStation[] }).stations;
+}
+
 export async function seed(options: { fresh?: boolean; disconnect?: boolean } = {}): Promise<void> {
   const fresh = options.fresh ?? process.argv.includes('--fresh');
   const disconnect = options.disconnect ?? true;
@@ -489,53 +499,33 @@ export async function seed(options: { fresh?: boolean; disconnect?: boolean } = 
 
   if (fresh) {
     logger.warn('--fresh: dropping existing stations and seeded users');
-    await Station.deleteMany({}).exec();
-    await User.deleteMany({ email: { $in: USERS.map((user) => user.email) } }).exec();
+    await db.query('delete from stations');
+    await db.query('delete from users where email = any($1)', [USERS.map((user) => user.email)]);
   }
 
   // ── Users ─────────────────────────────────────────────────────────────────
   let createdUsers = 0;
   for (const spec of USERS) {
-    const existing = await User.findOne({ email: spec.email }).exec();
-    if (existing) continue;
-    await User.create({
+    if (await Users.findByEmail(spec.email)) continue;
+    await Users.create({
       name: spec.name,
       email: spec.email,
-      passwordHash: spec.password, // hashed by the pre-save hook
+      password: spec.password,
       role: spec.role,
       ...('vehicle' in spec ? { vehicle: spec.vehicle } : {}),
     });
     createdUsers += 1;
   }
 
-  const operator = await User.findOne({ email: 'operator@wattway.dev' }).exec();
+  const operator = await Users.findByEmail('operator@wattway.dev');
 
   // ── Stations ──────────────────────────────────────────────────────────────
-  let createdStations = 0;
-  let skipped = 0;
-
-  for (const spec of STATIONS) {
-    const existing = await Station.findOne({
-      name: spec.name,
-      'address.city': spec.city,
-    }).exec();
-
-    if (existing) {
-      skipped += 1;
-      continue;
-    }
-
-    await Station.create({
+  const inputs: StationInput[] = [
+    ...STATIONS.map((spec, n) => ({
       name: spec.name,
       operator: spec.operator,
-      address: {
-        line1: spec.line1,
-        locality: spec.locality,
-        city: spec.city,
-        state: spec.state,
-        pincode: spec.pincode,
-      },
-      location: { type: 'Point', coordinates: [spec.lng, spec.lat] },
+      address: { line1: spec.line1, locality: spec.locality, city: spec.city, state: spec.state, pincode: spec.pincode },
+      location: { lat: spec.lat, lng: spec.lng },
       pricePerKwh: spec.pricePerKwh,
       rating: { average: spec.rating, count: spec.ratingCount },
       ports: spec.ports.map(([connectorType, powerKw, status], index) => ({
@@ -547,23 +537,55 @@ export async function seed(options: { fresh?: boolean; disconnect?: boolean } = 
       })),
       amenities: spec.amenities,
       queueLength: spec.queueLength,
-      isActive: true,
       // A stable handle for the routing module to hang a graph vertex off.
-      graphNodeId: `node-${spec.city.toLowerCase().replace(/\s+/g, '-')}-${createdStations}`,
-      ...(operator ? { managedBy: operator._id } : {}),
-    });
+      graphNodeId: `node-${spec.city.toLowerCase().replace(/\s+/g, '-')}-${n}`,
+      source: 'seed' as const,
+    })),
+    ...osmStations().map((spec) => ({
+      name: spec.name,
+      operator: spec.operator,
+      address: {
+        line1: spec.line1,
+        locality: spec.locality,
+        city: spec.city,
+        state: spec.state,
+        ...(spec.pincode ? { pincode: spec.pincode } : {}),
+      },
+      location: { lat: spec.lat, lng: spec.lng },
+      pricePerKwh: spec.pricePerKwh,
+      ports: spec.ports.map(([connectorType, powerKw], index) => ({
+        index,
+        connectorType,
+        powerKw,
+        status: 'free' as const,
+        occupiedSince: null,
+      })),
+      amenities: spec.amenities,
+      source: 'osm' as const,
+      externalId: spec.externalId,
+    })),
+  ];
 
+  let createdStations = 0;
+  let skipped = 0;
+  for (const input of inputs) {
+    const { rows } = await db.query(
+      `select 1 from stations where (name = $1 and address->>'city' = $2) or (source = $3 and external_id = $4)`,
+      [input.name, input.address.city, input.source, input.externalId ?? null],
+    );
+    if (rows.length) {
+      skipped += 1;
+      continue;
+    }
+    const station = await Stations.create({ ...input, ...(operator ? { managedBy: operator.id } : {}) });
+    if (operator) await Users.addOperatorOf(operator.id, station.id);
     createdStations += 1;
   }
 
-  if (operator) {
-    const managed = await Station.find({ managedBy: operator._id }).select('_id').exec();
-    operator.operatorOf = managed.map((station) => station._id);
-    await operator.save();
-  }
-
-  const prices = [...new Set(STATIONS.map((s) => s.pricePerKwh))].sort((a, b) => a - b);
-  const ratings = [...new Set(STATIONS.map((s) => s.rating))].sort((a, b) => a - b);
+  const prices = [...new Set(inputs.map((s) => s.pricePerKwh))].sort((a, b) => a - b);
+  const { rows: totals } = await db.query<{ total: number; osm: number }>(
+    "select count(*) as total, count(*) filter (where source = 'osm') as osm from stations",
+  );
 
   // eslint-disable-next-line no-console
   console.log(
@@ -574,16 +596,15 @@ export async function seed(options: { fresh?: boolean; disconnect?: boolean } = 
       `  users created .......... ${createdUsers}`,
       `  stations created ....... ${createdStations}`,
       `  stations skipped ....... ${skipped} (already present)`,
-      `  total in database ...... ${await Station.countDocuments({}).exec()}`,
+      `  total in database ...... ${totals[0]?.total} (${totals[0]?.osm} from OpenStreetMap)`,
       '',
       `  distinct prices ........ ${prices.length}  (Rs.${prices[0]} - Rs.${prices[prices.length - 1]}/kWh)`,
-      `  distinct ratings ....... ${ratings.length}  (${ratings[0]} - ${ratings[ratings.length - 1]} stars)`,
       '',
       '  Sign in with any of:',
       ...USERS.map((user) => `    ${user.role.padEnd(9)} ${user.email}  /  ${user.password}`),
       '',
       '  Try it:',
-      '    curl "http://localhost:4000/api/search/autocomplete?q=andh"',
+      '    curl "http://localhost:4000/api/search/autocomplete?q=tata"',
       '    curl "http://localhost:4000/api/search/range?minPrice=9&maxPrice=14&explain=true"',
       '    curl "http://localhost:4000/api/index/stats"',
       '',

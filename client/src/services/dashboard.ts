@@ -2,23 +2,23 @@
  * WattWay · Team Kothimbir 🌿
  * dashboard.ts — data for the operator dashboard.
  *
- * HARDCODED for now. When the backend is wired up:
+ * Live mode (API reachable): stations come from GET /api/stations (filtered by
+ * operator), port boards from GET /api/stations/:id and lines from GET
+ * /api/queue/:id. Changing a port calls PATCH /api/stations/:id/ports/:index
+ * when the caller is a signed-in operator/admin (the page passes remote=true);
+ * otherwise the change is local to this session. Removing a driver from a line,
+ * day stats and the road table have no endpoint, so they are computed
+ * client-side from the live station list.
  *
- *   getOperatorSnapshot → request(`/api/stations?operator=${operator}`) + the queue module's
- *                         GET /api/queue/:stationId for each station
- *   setPortStatus       → request(`/api/stations/${id}/ports/${index}`, { method: 'PATCH',
- *                         body: JSON.stringify({ status }) })   ← this endpoint already exists
- *   removeFromQueue     → the queue module's operator removal endpoint
- *   getDayStats         → an analytics endpoint (not specified yet)
- *   getDistanceTable    → the routing module's road graph (GET /api/algorithms/graph is the lab's)
- *
- * Changes made on the page live in this module's memory for the session, so
- * switching operators and back keeps them. A reload resets everything.
+ * Offline mode: the sample stations drive the same in-memory store.
  */
 import { floydWarshall, type AllPairs, type Edge } from '../utils/floyd';
 import { initSim } from '../utils/queueSim';
 import { roadKm } from '../utils/route';
-import { SAMPLE_STATIONS, type PortStatus, type Station } from './stations';
+import { json, request } from './api';
+import { fetchLiveQueue, type LiveQueue } from './queue';
+import { buildRoadLinks } from '../utils/roadLinks';
+import { getStation, loadStations, SAMPLE_STATIONS, type PortStatus, type Station } from './stations';
 
 export interface OpPort {
   index: number;
@@ -39,6 +39,8 @@ export interface OpStation {
   station: Station;
   ports: OpPort[];
   waiting: Waiting[];
+  /** True when this came from the API rather than the sample data. */
+  live?: boolean;
 }
 
 export const OPERATORS = [...new Set(SAMPLE_STATIONS.map((s) => s.operator))].sort();
@@ -103,14 +105,72 @@ function serveLine(op: OpStation): OpStation {
 
 // ─── Service functions ──────────────────────────────────────────────────────
 
+/** Operator names present in the current station list. */
+export async function listOperators(): Promise<{ operators: string[]; offline: boolean }> {
+  const { stations, offline } = await loadStations();
+  return { operators: [...new Set(stations.map((s) => s.operator))].sort(), offline };
+}
+
+const minutesSince = (iso: string | null | undefined) =>
+  iso ? Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60_000)) : 0;
+
+/** Build an operator view of one live station from its detail and queue snapshot. */
+export function toOpStation(station: Station, queue: LiveQueue | null): OpStation {
+  const ports: OpPort[] = station.ports.map((p) => ({
+    index: p.index,
+    connectorType: p.connectorType,
+    powerKw: p.powerKw,
+    status: p.status,
+    plate: p.status === 'occupied' ? 'Driver' : null,
+    occupiedMin: p.status === 'occupied' ? minutesSince(p.occupiedSince) : null,
+  }));
+  const waiting: Waiting[] = (queue?.waiting ?? []).map((w) => ({
+    plate: `Driver #${w.position}${w.urgent ? ' (priority)' : ''}`,
+    waitingMin: minutesSince(w.joinedAt),
+  }));
+  return {
+    live: true,
+    station: { ...station, queueLength: queue ? queue.queueLength : station.queueLength },
+    ports,
+    waiting,
+  };
+}
+
+async function fetchLiveOp(base: Station): Promise<OpStation> {
+  const [detail, queue] = await Promise.all([
+    getStation(base.id).then((s) => s ?? base, () => base),
+    fetchLiveQueue(base.id).catch(() => null),
+  ]);
+  const op = toOpStation(detail, queue);
+  store.set(base.id, op);
+  return op;
+}
+
 export async function getOperatorSnapshot(operator: string): Promise<OpStation[]> {
-  return SAMPLE_STATIONS.filter((s) => s.operator === operator).map((s) => get(s.id));
+  const { stations, offline } = await loadStations();
+  const mine = stations.filter((s) => s.operator === operator);
+  if (offline) return mine.map((s) => get(s.id));
+  return Promise.all(mine.map(fetchLiveOp));
 }
 
 export type PortAction = 'fault' | 'restore' | 'end';
 
 /** fault: free → faulted · restore: faulted → free · end: stop an occupied session. */
-export async function setPortStatus(stationId: string, index: number, action: PortAction): Promise<OpStation> {
+export async function setPortStatus(
+  stationId: string,
+  index: number,
+  action: PortAction,
+  remote = false,
+): Promise<OpStation> {
+  if (remote) {
+    const status = action === 'fault' ? 'faulted' : 'free';
+    await request(`/api/stations/${encodeURIComponent(stationId)}/ports/${index}`, json('PATCH', { status }));
+    // A freed port should go to whoever is at the front of the line.
+    if (action !== 'fault') await request(`/api/queue/${encodeURIComponent(stationId)}/allocate`, json('POST')).catch(() => undefined);
+    const { stations } = await loadStations({ force: true });
+    const base = stations.find((s) => s.id === stationId) ?? get(stationId).station;
+    return fetchLiveOp(base);
+  }
   const op = get(stationId);
   const ports = op.ports.map((p) => {
     if (p.index !== index) return p;
@@ -144,10 +204,18 @@ export interface HourStat {
 const bump = (h: number, centre: number, width: number) => Math.exp(-(((h - centre) / width) ** 2));
 
 /** A commuter-shaped day: a morning peak, a lunchtime dip, a bigger evening peak. */
-export async function getDayStats(operator: string): Promise<HourStat[]> {
+export async function getDayStats(operator: string, ops?: OpStation[]): Promise<HourStat[]> {
   let seed = 0;
   for (const ch of operator) seed = (seed * 31 + ch.charCodeAt(0)) >>> 0;
-  const scale = 0.85 + (seed % 20) / 100;
+  let scale = 0.85 + (seed % 20) / 100;
+  if (ops && ops.length > 0) {
+    // Anchor the typical-day curve to how busy this operator's stations are right now.
+    const ports = ops.flatMap((o) => o.ports).filter((p) => p.status !== 'faulted');
+    const now = ports.length ? ports.filter((p) => p.status === 'occupied').length / ports.length : 0;
+    const h = new Date().getHours();
+    const shape = 0.22 + 0.5 * bump(h, 9.5, 1.8) + 0.72 * bump(h, 18.5, 2);
+    if (now > 0) scale = Math.min(1.5, Math.max(0.6, now / shape));
+  }
   return Array.from({ length: 17 }, (_, i) => {
     const hour = 6 + i;
     const noise = (((seed >>> (i % 24)) & 7) - 3.5) / 100;
@@ -181,7 +249,8 @@ export const ROAD_LINKS: Edge[] = LINKS.map(([a, b]) => ({
   km: Math.round(roadKm(byId(a).location, byId(b).location) * 10) / 10,
 }));
 
-export async function getDistanceTable(): Promise<AllPairs & { stations: Station[] }> {
-  const stations = SAMPLE_STATIONS;
-  return { ...floydWarshall(stations.map((s) => s.id), ROAD_LINKS), stations };
+export async function getDistanceTable(): Promise<AllPairs & { stations: Station[]; links: Edge[] }> {
+  const { stations, offline } = await loadStations();
+  const links = offline ? ROAD_LINKS : buildRoadLinks(stations);
+  return { ...floydWarshall(stations.map((s) => s.id), links), stations, links };
 }

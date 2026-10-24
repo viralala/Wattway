@@ -27,8 +27,8 @@
  *
  *  CONSISTENCY - THE RULE THAT BITES
  *  ---------------------------------
- *  MongoDB (`QueueEntry`) is the durable write-behind log; this service is the
- *  hot path. Every mutation, in the same request:
+ *  Postgres (`queue_entries`) is the durable log; this service is the hot
+ *  path. Every mutation, in one database transaction:
  *      1. updates the in-memory line,
  *      2. persists the affected QueueEntry rows (status, port, position),
  *      3. writes `Station.queueLength` and any port flips,
@@ -36,28 +36,26 @@
  *         recommendation score, so a socket push alone is not enough,
  *  and then the controller broadcasts the change over Socket.IO.
  *
- *  A line is rehydrated lazily from MongoDB the first time a station is
- *  touched after boot, in stored `position` order.
+ *  The line is rehydrated from Postgres on every request, in stored
+ *  `position` order. On serverless hosting many instances serve the API, so
+ *  an in-memory copy could not be trusted between requests.
  *
  *  CONCURRENCY
  *  -----------
- *  Node is single-threaded, but a mutation awaits the database several times,
- *  so two requests for the same station could interleave between awaits. Each
- *  station therefore has a promise-chain mutex; work on different stations
- *  runs in parallel. The merge operation locks both stations in id order, so
- *  two opposite merges cannot deadlock.
- *
- *  KNOWN LIMIT: urgency details (battery %, emergency flag, expected charge
- *  minutes) are kept in memory only, because `QueueEntry` - owned by the
- *  indexing module - has no fields for them. After a restart the line keeps its
- *  order (positions are persisted) but those drivers count as ordinary.
+ *  Each mutation runs in a transaction that first locks the station's row
+ *  (`select ... for update`), so two requests for the same station - even on
+ *  different serverless instances - run one after the other. Within one
+ *  process a promise-chain mutex per station also keeps them in order. The
+ *  merge operation locks both stations in id order, so two opposite merges
+ *  cannot deadlock. Urgency details (battery %, emergency, expected charge
+ *  minutes) are stored on the entry, so priorities survive between requests.
  * ============================================================================
  */
 
-import { Types } from 'mongoose';
 import { DoublyLinkedList, type DListNode } from '../datastructures/LinkedList';
-import { Station, type StationDocument } from '../models/Station';
-import { QueueEntry } from '../models/QueueEntry';
+import { Stations, setPortStatus, toIndexed, type Station } from '../models/Station';
+import { QueueEntries } from '../models/QueueEntry';
+import { db, type Queryable } from '../config/db';
 import { stationIndex } from './stationIndex';
 import { ApiError } from '../utils/ApiError';
 import { haversineKm } from '../utils/geo';
@@ -86,7 +84,7 @@ export interface LiveDriver extends WaitingDriver {
   portIndex: number | null;
   /** Epoch ms. */
   startedChargingAt: number | null;
-  /** Last position written to MongoDB, so unchanged rows are not rewritten. */
+  /** Last position written to Postgres, so unchanged rows are not rewritten. */
   persistedPosition: number;
 }
 
@@ -232,15 +230,14 @@ export class StationLine {
 // ─── The service ────────────────────────────────────────────────────────────
 
 export class QueueService {
-  private readonly lines = new Map<string, StationLine>();
   private readonly locks = new Map<string, Promise<void>>();
 
   // ── reads ──
 
   async snapshot(stationId: string, viewerId?: string): Promise<QueueSnapshot> {
     return this.withLock(stationId, async () => {
-      const station = await this.loadStation(stationId);
-      const line = await this.loadLine(stationId);
+      const station = await this.loadStation(db, stationId);
+      const line = await this.loadLine(db, stationId);
       return this.buildSnapshot(station, line, viewerId, Date.now());
     });
   }
@@ -253,8 +250,8 @@ export class QueueService {
 
   async report(stationId: string, top = 5): Promise<OperatorReport & { integrity: Record<string, boolean>; middle: QueueSnapshot['middle'] }> {
     return this.withLock(stationId, async () => {
-      const station = await this.loadStation(stationId);
-      const line = await this.loadLine(stationId);
+      const station = await this.loadStation(db, stationId);
+      const line = await this.loadLine(db, stationId);
       const now = Date.now();
       const snapshot = this.buildSnapshot(station, line, undefined, now);
       return {
@@ -276,8 +273,8 @@ export class QueueService {
    */
   async liveJobs(stationId: string): Promise<{ jobs: ChargeJob[]; usablePorts: number }> {
     return this.withLock(stationId, async () => {
-      const station = await this.loadStation(stationId);
-      const line = await this.loadLine(stationId);
+      const station = await this.loadStation(db, stationId);
+      const line = await this.loadLine(db, stationId);
       const now = Date.now();
       const all = [...line.charging.values(), ...line.waitingDrivers()];
       const origin = all.reduce((min, d) => Math.min(min, d.joinedAt), now);
@@ -295,9 +292,9 @@ export class QueueService {
   // ── writes ──
 
   async join(stationId: string, user: AuthUser, options: JoinOptions = {}): Promise<{ change: QueueChange; entryId: string; startedCharging: boolean }> {
-    return this.mutate(stationId, async () => {
-      const station = await this.loadStation(stationId);
-      const line = await this.loadLine(stationId);
+    return this.mutate(stationId, async (q) => {
+      const station = await this.loadStation(q, stationId);
+      const line = await this.loadLine(q, stationId);
       if (line.has(user.id)) throw ApiError.conflict('You are already in this station’s queue');
       if (usablePorts(station.ports) === 0) {
         throw ApiError.conflict('Every port at this station is faulted; the queue is closed');
@@ -325,19 +322,19 @@ export class QueueService {
 
       let entryId: string;
       try {
-        const entry = await QueueEntry.create({
-          station: station._id,
-          user: new Types.ObjectId(user.id),
-          status: 'waiting',
+        entryId = await QueueEntries.create(q, {
+          stationId: station.id,
+          userId: user.id,
           position: preview.you?.position ?? 0,
           joinedAt: new Date(now),
           estimatedWaitMinutesAtJoin: preview.you?.estimatedWaitMinutes ?? 0,
+          batteryPct: driver.batteryPct,
+          emergency: driver.emergency,
+          expectedChargeMinutes: driver.expectedChargeMinutes,
         });
-        entryId = entry._id.toString();
       } catch (error) {
-        if ((error as { code?: number }).code === 11000) {
-          // Another process holds a live entry for this user: our cache is stale.
-          this.lines.delete(stationId);
+        if ((error as { code?: string }).code === '23505') {
+          // The partial unique index: this user already has a live entry here.
           throw ApiError.conflict('You are already in this station’s queue');
         }
         throw error;
@@ -347,7 +344,7 @@ export class QueueService {
       driver.persistedPosition = preview.you?.position ?? 0;
       line.enqueue(driver);
 
-      await this.allocateAndPersist(station, line, now);
+      await this.allocateAndPersist(q, station, line, now);
       const change = this.buildChange(station, line, now);
       return { change, entryId, startedCharging: driver.status === 'charging' };
     });
@@ -355,32 +352,26 @@ export class QueueService {
 
   /** Leave the line, or finish charging. Either way the next car moves up. */
   async leave(stationId: string, userId: string): Promise<{ change: QueueChange; left: 'waiting' | 'charging' }> {
-    return this.mutate(stationId, async () => {
-      const station = await this.loadStation(stationId, { allowInactive: true });
-      const line = await this.loadLine(stationId);
+    return this.mutate(stationId, async (q) => {
+      const station = await this.loadStation(q, stationId, { allowInactive: true });
+      const line = await this.loadLine(q, stationId);
       const now = Date.now();
 
       let left: 'waiting' | 'charging';
       const waiting = line.removeWaiting(userId);
       if (waiting) {
         left = 'waiting';
-        await QueueEntry.updateOne(
-          { _id: waiting.id },
-          { status: 'cancelled', finishedAt: new Date(now) },
-        ).exec();
+        await QueueEntries.finish(q, waiting.id, 'cancelled', new Date(now));
       } else {
         const charging = line.charging.get(userId);
         if (!charging) throw ApiError.notFound('You are not in this station’s queue');
         left = 'charging';
         line.charging.delete(userId);
         if (charging.portIndex !== null) freePort(station, charging.portIndex);
-        await QueueEntry.updateOne(
-          { _id: charging.id },
-          { status: 'completed', finishedAt: new Date(now), position: 0 },
-        ).exec();
+        await QueueEntries.finish(q, charging.id, 'completed', new Date(now));
       }
 
-      await this.allocateAndPersist(station, line, now);
+      await this.allocateAndPersist(q, station, line, now);
       const change = this.buildChange(station, line, now);
       change.personal.push({ userId, view: { stationId, status: 'left', reason: left === 'charging' ? 'completed' : 'cancelled' } });
       return { change, left };
@@ -389,12 +380,12 @@ export class QueueService {
 
   /** Re-run slot allocation, e.g. after an operator freed a port by hand. */
   async allocate(stationId: string): Promise<{ change: QueueChange; started: number }> {
-    return this.mutate(stationId, async () => {
-      const station = await this.loadStation(stationId);
-      const line = await this.loadLine(stationId);
+    return this.mutate(stationId, async (q) => {
+      const station = await this.loadStation(q, stationId);
+      const line = await this.loadLine(q, stationId);
       const now = Date.now();
       const before = line.charging.size;
-      await this.allocateAndPersist(station, line, now);
+      await this.allocateAndPersist(q, station, line, now);
       return { change: this.buildChange(station, line, now), started: line.charging.size - before };
     });
   }
@@ -406,7 +397,7 @@ export class QueueService {
    */
   async mergeInto(
     sourceId: string,
-    options: { targetStationId?: string; faultPorts?: boolean; canManage: (station: StationDocument) => boolean },
+    options: { targetStationId?: string; faultPorts?: boolean; canManage: (station: Station) => boolean },
   ): Promise<{
     source: QueueChange;
     target: QueueChange;
@@ -415,24 +406,26 @@ export class QueueService {
     targetDistanceKm: number;
     merge: MergeResult<LiveDriver>['stats'];
   }> {
-    const sourceStation = await this.loadStation(sourceId, { allowInactive: true });
+    const sourceStation = await this.loadStation(db, sourceId, { allowInactive: true });
     const targetStation = options.targetStationId
-      ? await this.loadStation(options.targetStationId)
+      ? await this.loadStation(db, options.targetStationId)
       : await this.nearestActiveStation(sourceStation);
-    const targetId = targetStation._id.toString();
+    const targetId = targetStation.id;
     if (targetId === sourceId) throw ApiError.badRequest('A station cannot merge its queue into itself');
     if (!options.canManage(targetStation)) {
       throw ApiError.forbidden('You do not manage the target station');
     }
 
     const [first, second] = [sourceId, targetId].sort();
-    return this.mutate(first, () =>
-      this.mutate(second, async () => {
-        // Re-read inside the locks: the documents above may be stale by now.
-        const source = await this.loadStation(sourceId, { allowInactive: true });
-        const target = await this.loadStation(targetId);
-        const sourceLine = await this.loadLine(sourceId);
-        const targetLine = await this.loadLine(targetId);
+    return this.withLock(first, () =>
+      this.mutate(second, async (q) => {
+        // Lock both rows in id order, then re-read: the stations above may be stale by now.
+        await this.loadStation(q, first, { allowInactive: true });
+        await this.loadStation(q, second, { allowInactive: true });
+        const source = await this.loadStation(q, sourceId, { allowInactive: true });
+        const target = await this.loadStation(q, targetId);
+        const sourceLine = await this.loadLine(q, sourceId);
+        const targetLine = await this.loadLine(q, targetId);
         const now = Date.now();
 
         const incoming: LiveDriver[] = [];
@@ -445,27 +438,17 @@ export class QueueService {
         sourceLine.rebuild([]);
         targetLine.rebuild(result.merged);
 
-        const ops: Parameters<typeof QueueEntry.bulkWrite>[0] = [
-          ...incoming.map((driver) => ({
-            updateOne: { filter: { _id: driver.id }, update: { $set: { station: target._id } } },
-          })),
-          ...duplicates.map((driver) => ({
-            updateOne: {
-              filter: { _id: driver.id },
-              update: { $set: { status: 'cancelled' as const, finishedAt: new Date(now) } },
-            },
-          })),
-        ];
-        if (ops.length) await QueueEntry.bulkWrite(ops);
+        await QueueEntries.moveTo(q, incoming.map((driver) => driver.id), target.id);
+        for (const driver of duplicates) await QueueEntries.finish(q, driver.id, 'cancelled', new Date(now));
 
         if (options.faultPorts) {
           source.ports.forEach((port) => {
-            if (port.status === 'free') source.setPortStatus(port.index, 'faulted');
+            if (port.status === 'free') setPortStatus(source, port.index, 'faulted');
           });
         }
 
-        await this.allocateAndPersist(source, sourceLine, now);
-        await this.allocateAndPersist(target, targetLine, now);
+        await this.allocateAndPersist(q, source, sourceLine, now);
+        await this.allocateAndPersist(q, target, targetLine, now);
 
         const sourceChange = this.buildChange(source, sourceLine, now);
         const targetChange = this.buildChange(target, targetLine, now);
@@ -492,37 +475,24 @@ export class QueueService {
           moved: incoming.length,
           skippedDuplicates: duplicates.length,
           targetDistanceKm:
-            Math.round(haversineKm(source.toIndexed().location, target.toIndexed().location) * 1000) / 1000,
+            Math.round(haversineKm(toIndexed(source).location, toIndexed(target).location) * 1000) / 1000,
           merge: result.stats,
         };
       }),
     );
   }
 
-  /** Forget every cached line. Tests call this between cases. */
+  /** Drop the in-process locks. Tests call this between cases. */
   reset(): void {
-    this.lines.clear();
     this.locks.clear();
-  }
-
-  /** Drop one station's cached line, forcing a rehydrate on next touch. */
-  forget(stationId: string): void {
-    this.lines.delete(stationId);
   }
 
   // ── internals ──
 
-  /** withLock, plus: if a write fails half-way, drop the cached line so the
-   *  next request rehydrates from MongoDB instead of trusting a diverged copy. */
-  private async mutate<R>(key: string, work: () => Promise<R>): Promise<R> {
-    return this.withLock(key, async () => {
-      try {
-        return await work();
-      } catch (error) {
-        this.lines.delete(key);
-        throw error;
-      }
-    });
+  /** withLock, plus one database transaction around the work: a write that
+   *  fails half-way rolls back entirely. */
+  private async mutate<R>(key: string, work: (q: Queryable) => Promise<R>): Promise<R> {
+    return this.withLock(key, () => db.tx(work));
   }
 
   private async withLock<R>(key: string, work: () => Promise<R>): Promise<R> {
@@ -542,53 +512,42 @@ export class QueueService {
     }
   }
 
-  private async loadStation(stationId: string, options: { allowInactive?: boolean } = {}): Promise<StationDocument> {
-    const station = await Station.findById(stationId).exec();
+  /** Inside a transaction (`q` from mutate) this also locks the station's row. */
+  private async loadStation(q: Queryable, stationId: string, options: { allowInactive?: boolean } = {}): Promise<Station> {
+    const station = q === db ? await Stations.findById(stationId) : await Stations.findByIdForUpdate(stationId, q);
     if (!station || (!station.isActive && !options.allowInactive)) throw ApiError.notFound('Station not found');
     return station;
   }
 
-  private async nearestActiveStation(source: StationDocument): Promise<StationDocument> {
-    const nearest = await Station.findOne({
-      _id: { $ne: source._id },
-      isActive: true,
-      location: { $near: { $geometry: source.location } },
-    }).exec();
+  private async nearestActiveStation(source: Station): Promise<Station> {
+    const [lng, lat] = source.location.coordinates;
+    const nearest = await Stations.nearestActive(source.id, { lat, lng });
     if (!nearest) throw ApiError.notFound('No other active station to merge into');
     return nearest;
   }
 
-  /** Lazy rehydrate from MongoDB, in stored position order. */
-  private async loadLine(stationId: string): Promise<StationLine> {
-    const cached = this.lines.get(stationId);
-    if (cached) return cached;
-
-    const entries = await QueueEntry.find({ station: stationId, status: { $in: ['waiting', 'charging'] } })
-      .populate<{ user: { _id: Types.ObjectId; name?: string } | null }>('user', 'name')
-      .sort({ position: 1, joinedAt: 1 })
-      .exec();
+  /** Rehydrate the live line from Postgres, in stored position order. */
+  private async loadLine(q: Queryable, stationId: string): Promise<StationLine> {
+    const entries = await QueueEntries.live(q, stationId);
 
     const line = new StationLine();
     for (const entry of entries) {
-      const user = entry.user;
-      if (!user) continue; // user deleted - ignore the orphaned row
       const driver: LiveDriver = {
-        id: entry._id.toString(),
-        userId: user._id.toString(),
-        ...(user.name ? { name: user.name } : {}),
+        id: entry.id,
+        userId: entry.userId,
+        ...(entry.userName ? { name: entry.userName } : {}),
         joinedAt: entry.joinedAt.getTime(),
-        batteryPct: null,
-        emergency: false,
-        expectedChargeMinutes: DEFAULT_CHARGE_MINUTES,
+        batteryPct: entry.batteryPct,
+        emergency: entry.emergency,
+        expectedChargeMinutes: entry.expectedChargeMinutes ?? DEFAULT_CHARGE_MINUTES,
         status: entry.status === 'charging' ? 'charging' : 'waiting',
-        portIndex: entry.portIndex ?? null,
+        portIndex: entry.portIndex,
         startedChargingAt: entry.startedChargingAt ? entry.startedChargingAt.getTime() : null,
         persistedPosition: entry.position,
       };
       if (driver.status === 'charging') line.charging.set(driver.userId, driver);
       else line.enqueue(driver);
     }
-    this.lines.set(stationId, line);
     return line;
   }
 
@@ -596,45 +555,40 @@ export class QueueService {
    * Hand free ports to the front of the line, persist positions, write the
    * denormalised queueLength and port board, and keep the index in step.
    */
-  private async allocateAndPersist(station: StationDocument, line: StationLine, now: number): Promise<void> {
-    const ops: Parameters<typeof QueueEntry.bulkWrite>[0] = [];
+  private async allocateAndPersist(q: Queryable, station: Station, line: StationLine, now: number): Promise<void> {
 
     for (const port of [...station.ports].sort((a, b) => a.index - b.index)) {
       if (line.waiting.isEmpty) break;
       if (port.status !== 'free') continue;
       const driver = line.popNext() as LiveDriver;
-      station.setPortStatus(port.index, 'occupied');
+      setPortStatus(station, port.index, 'occupied');
       driver.status = 'charging';
       driver.portIndex = port.index;
       driver.startedChargingAt = now;
       driver.persistedPosition = 0;
       line.charging.set(driver.userId, driver);
-      ops.push({
-        updateOne: {
-          filter: { _id: driver.id },
-          update: { $set: { status: 'charging', position: 0, portIndex: port.index, startedChargingAt: new Date(now) } },
-        },
-      });
+      await QueueEntries.startCharging(q, driver.id, port.index, new Date(now));
     }
 
+    const moved: { id: string; position: number }[] = [];
     line.waiting.forEach((driver, index) => {
       const position = index + 1;
       if (driver.persistedPosition !== position) {
         driver.persistedPosition = position;
-        ops.push({ updateOne: { filter: { _id: driver.id }, update: { $set: { position } } } });
+        moved.push({ id: driver.id, position });
       }
     });
-    if (ops.length) await QueueEntry.bulkWrite(ops);
+    await QueueEntries.setPositions(q, moved);
 
     station.queueLength = line.waiting.size;
-    await station.save();
+    await Stations.save(station, q);
     // THE RULE: queueLength and free ports feed the recommendation score.
-    if (station.isActive) stationIndex.upsert(station.toIndexed());
-    else stationIndex.remove(station._id.toString());
+    if (station.isActive) stationIndex.upsert(toIndexed(station));
+    else stationIndex.remove(station.id);
   }
 
-  private buildSnapshot(station: StationDocument, line: StationLine, viewerId: string | undefined, now: number): QueueSnapshot {
-    const stationId = station._id.toString();
+  private buildSnapshot(station: Station, line: StationLine, viewerId: string | undefined, now: number): QueueSnapshot {
+    const stationId = station.id;
     const chargingByPort = new Map<number, LiveDriver>();
     line.charging.forEach((driver) => {
       if (driver.portIndex !== null) chargingByPort.set(driver.portIndex, driver);
@@ -729,8 +683,8 @@ export class QueueService {
     return null;
   }
 
-  private buildChange(station: StationDocument, line: StationLine, now: number): QueueChange {
-    const stationId = station._id.toString();
+  private buildChange(station: Station, line: StationLine, now: number): QueueChange {
+    const stationId = station.id;
     const snapshot = this.buildSnapshot(station, line, undefined, now);
     const personal: QueueChange['personal'] = [];
     line.waiting.forEach((driver, index) => {
@@ -791,9 +745,9 @@ function usablePorts(ports: readonly Port[]): number {
 }
 
 /** Free a port only if it is occupied - never "repair" a faulted one by accident. */
-function freePort(station: StationDocument, portIndex: number): void {
+function freePort(station: Station, portIndex: number): void {
   const port = station.ports.find((p) => p.index === portIndex);
-  if (port && port.status === 'occupied') station.setPortStatus(portIndex, 'free');
+  if (port && port.status === 'occupied') setPortStatus(station, portIndex, 'free');
 }
 
 /**

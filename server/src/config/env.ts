@@ -29,9 +29,10 @@ const schema = z.object({
 
   CORS_ORIGIN: z.string().default('http://localhost:3000,http://localhost:5173'),
 
-  MONGO_URI: isTest
-    ? z.string().default('mongodb://127.0.0.1:27017/wattway-test')
-    : z.string().min(1, 'MONGO_URI is required'),
+  // Postgres connection string — Supabase's transaction pooler in production.
+  DATABASE_URL: isTest
+    ? z.string().default('postgres://unused-in-tests')
+    : z.string().min(1, 'DATABASE_URL is required'),
 
   REDIS_URL: z.string().optional(),
 

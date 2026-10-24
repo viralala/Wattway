@@ -2,18 +2,16 @@
  * WattWay · Team Kothimbir 🌿
  * routes.ts — route planning for the route planner page.
  *
- * HARDCODED for now: planning belongs to the routing module (`POST
- * /api/routes/plan`, Graph + Min-Heap). `planRoute` computes the same shape
- * locally from the sample stations; swap its body for
- *
- *   request<RoutePlan>('/api/routes/plan', { method: 'POST', body: JSON.stringify(input) })
+ * There is no POST /api/routes/plan yet (the routing module hasn't landed),
+ * so planning stays client-side: planTrip (utils/route.ts) scores the LIVE
+ * station list from the API. Swap planRoute for the endpoint when it exists.
  *
  * The plan returns raw per-station metrics and the page ranks them with the
  * driver's weights, so dragging a weight slider re-ranks instantly without a
  * round trip.
  */
 import { planTrip, type RoutePlan, type TripInput, type Vehicle } from '../utils/route';
-import { HOME, SAMPLE_STATIONS, type LatLng } from './stations';
+import { HOME, loadStations, type LatLng } from './stations';
 
 export interface Place extends LatLng {
   id: string;
@@ -38,5 +36,6 @@ export const VEHICLES: Vehicle[] = [
 ];
 
 export async function planRoute(input: TripInput): Promise<RoutePlan> {
-  return planTrip(SAMPLE_STATIONS, input);
+  const { stations } = await loadStations();
+  return planTrip(stations, input);
 }

@@ -2,7 +2,7 @@
   "name": "wattway-server",
   "version": "0.1.0",
   "private": true,
-  "description": "WattWay API server — custom data structures, indexing and auth. Built by Team Kothimbir 🌿",
+  "description": "WattWay API server — custom data structures, indexing and auth on Postgres (Supabase). Built by Team Kothimbir 🌿",
   "author": "Team Kothimbir 🌿",
   "license": "MIT",
   "main": "dist/server.js",
@@ -18,7 +18,8 @@
     "test:ds": "cross-env NODE_ENV=test jest tests/datastructures --runInBand",
     "test:coverage": "cross-env NODE_ENV=test jest --coverage --runInBand",
     "lint": "eslint \"src/**/*.ts\" \"tests/**/*.ts\"",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "import:osm": "tsx scripts/import-osm.ts"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
@@ -29,12 +30,13 @@
     "express-rate-limit": "^7.4.0",
     "helmet": "^7.1.0",
     "jsonwebtoken": "^9.0.2",
-    "mongoose": "^8.6.0",
     "morgan": "^1.10.0",
+    "pg": "^8.23.1",
     "socket.io": "^4.7.5",
     "zod": "^3.23.8"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.11",
     "@types/bcryptjs": "^2.4.6",
     "@types/compression": "^1.7.5",
     "@types/cors": "^2.8.17",
@@ -43,10 +45,10 @@
     "@types/jsonwebtoken": "^9.0.6",
     "@types/morgan": "^1.9.9",
     "@types/node": "^20.14.0",
+    "@types/pg": "^8.23.1",
     "@types/supertest": "^6.0.2",
     "cross-env": "^7.0.3",
     "jest": "^29.7.0",
-    "mongodb-memory-server": "^10.0.0",
     "supertest": "^7.0.0",
     "ts-jest": "^29.2.5",
     "tsx": "^4.19.0",

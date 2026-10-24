@@ -1,0 +1,7 @@
+/* WattWay · Team Kothimbir 🌿 — Sign in / register */
+
+.ac-form { display: grid; gap: 1rem; max-width: 440px; margin-top: 1.25rem; }
+.ac-form .field { margin: 0; }
+.ac-form .notice { margin: 0; }
+
+.nav-account a.nav-signin { border: 1.5px solid var(--ink); }

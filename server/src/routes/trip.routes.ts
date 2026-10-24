@@ -17,16 +17,16 @@ import { asyncHandler } from '../middleware/asyncHandler';
 import { requireAuth } from '../middleware/auth';
 import { validate } from '../middleware/validate';
 import { TRIP_STATUSES } from '../models/Trip';
-import { zLimit, zObjectId } from '../utils/zod';
+import { zLimit, zId } from '../utils/zod';
 
 const router = Router();
 
-const idParams = z.object({ id: zObjectId });
+const idParams = z.object({ id: zId });
 
 const listQuery = z.object({
   limit: zLimit(100, 20),
   /** Id of the last trip already shown — continue the list after it. */
-  before: zObjectId.optional(),
+  before: zId.optional(),
 });
 
 const point = z.object({ lat: z.number().min(-90).max(90), lng: z.number().min(-180).max(180) }).strict();
@@ -40,7 +40,7 @@ const createSchema = z
     batteryStartPct: z.number().min(0).max(100),
     chargingStop: z
       .object({
-        stationId: zObjectId,
+        stationId: zId,
         arrivalBatteryPct: z.number().min(0).max(100).optional(),
         estimatedWaitMinutes: z.number().min(0).optional(),
         estimatedChargeMinutes: z.number().min(0).optional(),

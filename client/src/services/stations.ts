@@ -1,16 +1,18 @@
 /**
  * WattWay · Team Kothimbir 🌿
- * stations.ts — station data for the map.
+ * stations.ts — station data for the map, from the live API.
  *
- * HARDCODED for now: the stations API belongs to the backend module. The shapes
- * below mirror the server's `IndexedStation` + `Port` types (server/src/types),
- * so wiring it up means replacing the two function bodies with:
+ * `GET /api/stations` is the source of truth. The server's shapes
+ * (`IndexedStation`, and the full document from `GET /api/stations/:id`) are
+ * mapped onto the client `Station` by `mapServerStation`, so pages never see
+ * the wire format. If the API can't be reached (no network, a 5xx, or a host
+ * that doesn't serve /api), the sample stations below are used instead and
+ * `offline: true` is reported so pages can say so.
  *
- *   listStations → request<Station[]>(`/api/stations?${params}`)
- *   getStation   → request<Station>(`/api/stations/${id}`)
- *
- * Operators and stations are fictional; coordinates are real Pune localities.
+ * Sample operators and stations are fictional; coordinates are real Pune
+ * localities.
  */
+import { ApiRequestError, isUnreachable, request } from './api';
 
 export const CONNECTOR_TYPES = ['CCS2', 'CHAdeMO', 'Type2', 'GB/T', 'Bharat-AC-001', 'Bharat-DC-001'] as const;
 export type ConnectorType = (typeof CONNECTOR_TYPES)[number];
@@ -21,6 +23,8 @@ export interface Port {
   connectorType: ConnectorType;
   powerKw: number;
   status: PortStatus;
+  /** ISO time the current session started (live API only). */
+  occupiedSince?: string | null;
 }
 
 export interface LatLng {
@@ -45,11 +49,14 @@ export interface Station {
   isActive: boolean;
   /** The fixed-size port-status board (the Array data structure). */
   ports: Port[];
+  /** True when `ports` was rebuilt from the counts because the list endpoint doesn't carry the board. */
+  portsApprox?: boolean;
 }
 
 export interface StationQuery {
   city?: string;
   connectorType?: ConnectorType;
+  operator?: string;
 }
 
 /** Where the map says "you are here": VIT Pune, Bibwewadi. */
@@ -104,16 +111,178 @@ function build({ banks, line1, locality, pincode, ...rest }: Seed): Station {
 
 export const SAMPLE_STATIONS: Station[] = SEEDS.map(build);
 
-// ─── Service functions (swap these bodies for real requests) ───────────────
+// ─── Server → client mapping ───────────────────────────────────────────────
 
-export async function listStations(query: StationQuery = {}): Promise<Station[]> {
-  return SAMPLE_STATIONS.filter(
-    (s) =>
-      (!query.city || s.address.city.toLowerCase() === query.city.toLowerCase()) &&
-      (!query.connectorType || s.connectorTypes.includes(query.connectorType)),
-  );
+type Raw = Record<string, unknown>;
+const isObj = (v: unknown): v is Raw => typeof v === 'object' && v !== null;
+const num = (v: unknown, fallback = 0) => (typeof v === 'number' && Number.isFinite(v) ? v : fallback);
+const str = (v: unknown, fallback = '') => (typeof v === 'string' ? v : fallback);
+
+const TYPICAL_KW: Record<ConnectorType, number> = {
+  CCS2: 60,
+  CHAdeMO: 50,
+  Type2: 22,
+  'GB/T': 50,
+  'Bharat-AC-001': 3.3,
+  'Bharat-DC-001': 15,
+};
+
+const asConnector = (v: unknown): ConnectorType =>
+  (CONNECTOR_TYPES as readonly string[]).includes(v as string) ? (v as ConnectorType) : 'Type2';
+
+/** free stays free, occupied/busy/charging are occupied, anything else (faulted, offline…) is faulted. */
+export function toPortStatus(v: unknown): PortStatus {
+  if (v === 'free') return 'free';
+  if (v === 'occupied' || v === 'busy' || v === 'charging') return 'occupied';
+  return 'faulted';
 }
 
+function readLocation(v: unknown): LatLng {
+  if (isObj(v)) {
+    if (Array.isArray(v.coordinates)) return { lat: num(v.coordinates[1]), lng: num(v.coordinates[0]) };
+    return { lat: num(v.lat), lng: num(v.lng) };
+  }
+  return { lat: 0, lng: 0 };
+}
+
+function readPorts(v: unknown): Port[] {
+  if (!Array.isArray(v)) return [];
+  return v.filter(isObj).map((p, i) => ({
+    index: num(p.index, i),
+    connectorType: asConnector(p.connectorType),
+    powerKw: num(p.powerKw, 22),
+    status: toPortStatus(p.status),
+    occupiedSince: typeof p.occupiedSince === 'string' ? p.occupiedSince : null,
+  }));
+}
+
+/** The list endpoint sends counts, not the board. Rebuild a plausible one: free ports first. */
+function approxPorts(types: ConnectorType[], total: number, free: number): Port[] {
+  const kinds = types.length > 0 ? types : (['Type2'] as ConnectorType[]);
+  return Array.from({ length: total }, (_, index) => {
+    const connectorType = kinds[index % kinds.length];
+    return { index, connectorType, powerKw: TYPICAL_KW[connectorType], status: index < free ? ('free' as const) : ('occupied' as const) };
+  });
+}
+
+/**
+ * Turn whatever the server sent (the flat list item or the full station
+ * document: GeoJSON location, `{ average, count }` rating, ports) into the
+ * client `Station`.
+ */
+export function mapServerStation(input: unknown): Station {
+  const raw: Raw = isObj(input) ? input : {};
+  const address = isObj(raw.address) ? raw.address : {};
+  const ratingRaw = raw.rating;
+  const rating = isObj(ratingRaw) ? num(ratingRaw.average) : num(ratingRaw);
+  const ratingCount = isObj(ratingRaw) ? num(ratingRaw.count) : num(raw.ratingCount);
+
+  let ports = readPorts(raw.ports);
+  const listedTypes = Array.isArray(raw.connectorTypes) ? raw.connectorTypes.map(asConnector) : [];
+  let portsApprox = false;
+  if (ports.length === 0 && num(raw.totalPorts) > 0) {
+    ports = approxPorts(listedTypes, num(raw.totalPorts), num(raw.freePorts));
+    portsApprox = true;
+  }
+
+  const connectorTypes = listedTypes.length > 0 ? [...new Set(listedTypes)] : [...new Set(ports.map((p) => p.connectorType))];
+  const station: Station = {
+    id: str(raw.id) || str(raw._id),
+    name: str(raw.name),
+    operator: str(raw.operator),
+    address: {
+      line1: str(address.line1),
+      locality: str(address.locality),
+      city: str(address.city),
+      state: str(address.state),
+      ...(typeof address.pincode === 'string' ? { pincode: address.pincode } : {}),
+    },
+    location: readLocation(raw.location),
+    pricePerKwh: num(raw.pricePerKwh),
+    rating,
+    ratingCount,
+    connectorTypes,
+    totalPorts: ports.length > 0 ? ports.length : num(raw.totalPorts),
+    freePorts: ports.length > 0 && !portsApprox ? ports.filter((p) => p.status === 'free').length : num(raw.freePorts),
+    queueLength: num(raw.queueLength),
+    amenities: Array.isArray(raw.amenities) ? raw.amenities.filter((a): a is string => typeof a === 'string') : [],
+    isActive: raw.isActive !== false,
+    ports,
+  };
+  if (portsApprox) station.portsApprox = true;
+  return station;
+}
+
+// ─── Service functions ──────────────────────────────────────────────────────
+
+export interface StationList {
+  stations: Station[];
+  /** True when the API was unreachable and these are the built-in sample stations. */
+  offline: boolean;
+}
+
+const PAGE = 100;
+const LIVE_TTL_MS = 20_000;
+const OFFLINE_TTL_MS = 5_000;
+
+async function fetchAllStations(): Promise<Station[]> {
+  const out: Station[] = [];
+  for (let page = 1; page <= 20; page += 1) {
+    const data = await request<{ stations: unknown[] }>(`/api/stations?limit=${PAGE}&page=${page}`);
+    const batch = Array.isArray(data?.stations) ? data.stations : [];
+    out.push(...batch.map(mapServerStation));
+    if (batch.length < PAGE) break;
+  }
+  return out;
+}
+
+let cache: { at: number; ttl: number; value: Promise<StationList> } | null = null;
+
+/** Every active station from the API, or the sample set (flagged `offline`) when it's unreachable. Cached briefly and shared by all pages. */
+export function loadStations(options: { force?: boolean } = {}): Promise<StationList> {
+  if (!options.force && cache && Date.now() - cache.at < cache.ttl) return cache.value;
+  const entry = { at: Date.now(), ttl: LIVE_TTL_MS, value: null as unknown as Promise<StationList> };
+  entry.value = fetchAllStations().then(
+    (stations): StationList => ({ stations, offline: false }),
+    (error): StationList => {
+      if (!isUnreachable(error)) {
+        if (cache === entry) cache = null;
+        throw error;
+      }
+      entry.ttl = OFFLINE_TTL_MS;
+      return { stations: SAMPLE_STATIONS, offline: true };
+    },
+  );
+  cache = entry;
+  return entry.value;
+}
+
+export function clearStationCache() {
+  cache = null;
+}
+
+const matches = (s: Station, q: StationQuery) =>
+  (!q.city || s.address.city.toLowerCase() === q.city.toLowerCase()) &&
+  (!q.operator || s.operator.toLowerCase() === q.operator.toLowerCase()) &&
+  (!q.connectorType || s.connectorTypes.includes(q.connectorType));
+
+export async function listStations(query: StationQuery = {}): Promise<Station[]> {
+  return (await loadStations()).stations.filter((s) => matches(s, query));
+}
+
+/** One station with its real port board. `null` when it doesn't exist. */
 export async function getStation(id: string): Promise<Station | null> {
-  return SAMPLE_STATIONS.find((s) => s.id === id) ?? null;
+  const { stations, offline } = await loadStations();
+  const listed = stations.find((s) => s.id === id);
+  if (offline) return listed ?? null;
+  try {
+    const data = await request<{ station: unknown }>(`/api/stations/${encodeURIComponent(id)}`);
+    const detail = mapServerStation(data.station);
+    // The detail document has the board but not the live queue length.
+    return listed ? { ...detail, queueLength: listed.queueLength } : detail;
+  } catch (error) {
+    if (error instanceof ApiRequestError && error.status === 404) return null;
+    if (isUnreachable(error)) return listed ?? null;
+    throw error;
+  }
 }

@@ -1,54 +1,58 @@
 /**
  * WattWay · Team Kothimbir 🌿
  * ---------------------------------------------------------------------------
- * db.ts — an in-memory MongoDB for the integration tests.
+ * db.ts — an in-memory Postgres for the integration tests.
  *
- * `mongodb-memory-server` spins up a real mongod against a temp directory, so
- * the tests exercise genuine indexes, genuine unique constraints and genuine
- * validation — none of which a mocked Mongoose would catch. Nothing touches a
- * developer's actual database.
- *
- * NOTE: the first run downloads a mongod binary (~100 MB) and caches it. If
- * you are offline, integration tests will fail to start while the unit tests
- * for the data structures keep working — that separation is deliberate, and it
- * is why PRD Section 11 asks for the structures to be testable on their own.
+ * PGlite is real Postgres compiled to WebAssembly, running inside the Jest
+ * process: the tests exercise genuine constraints, genuine unique indexes and
+ * the exact SQL production runs, with no server to install and nothing
+ * touching a developer's actual database. The schema is db/schema.sql, the
+ * same DDL as the Supabase migration.
  * ---------------------------------------------------------------------------
  */
 
-import mongoose from 'mongoose';
-import { MongoMemoryServer } from 'mongodb-memory-server';
+import fs from 'node:fs';
+import path from 'node:path';
+import { PGlite } from '@electric-sql/pglite';
+import { citext } from '@electric-sql/pglite/contrib/citext';
+import { useDatabase, type Database, type Queryable } from '../../src/config/db';
 
-let server: MongoMemoryServer | null = null;
+let pg: PGlite | null = null;
 
-/** Boot the in-memory server and connect Mongoose to it. */
-export async function startTestDatabase(): Promise<string> {
-  server = await MongoMemoryServer.create();
-  const uri = server.getUri();
-  await mongoose.connect(uri);
-  return uri;
+const SCHEMA = fs.readFileSync(path.resolve(__dirname, '../../db/schema.sql'), 'utf8');
+
+const TABLES = ['queue_entries', 'trips', 'station_ratings', 'station_operators', 'stations', 'users'];
+
+/** Boot PGlite, load the schema, and make it the app's database. */
+export async function startTestDatabase(): Promise<Database> {
+  pg = new PGlite({ extensions: { citext } });
+  await pg.exec(SCHEMA);
+  const instance = pg;
+
+  const database: Database = {
+    query: (text, params) => instance.query(text, params) as never,
+    // PGlite runs on one connection, so a transaction simply holds it.
+    tx: (fn) => instance.transaction((tx) => fn(tx as unknown as Queryable)),
+    close: async () => undefined,
+  };
+  useDatabase(database);
+  return database;
 }
 
-/** Wipe every collection between tests, keeping indexes intact. */
+/** Wipe every table between tests, keeping the schema. */
 export async function clearTestDatabase(): Promise<void> {
-  const { collections } = mongoose.connection;
-  await Promise.all(
-    Object.values(collections).map((collection) => collection.deleteMany({})),
-  );
+  if (pg) await pg.exec(`truncate ${TABLES.join(', ')} cascade`);
 }
 
 export async function stopTestDatabase(): Promise<void> {
-  await mongoose.connection.dropDatabase().catch(() => undefined);
-  await mongoose.disconnect();
-  if (server) {
-    await server.stop();
-    server = null;
+  useDatabase(null);
+  if (pg) {
+    await pg.close();
+    pg = null;
   }
 }
 
-/**
- * Mongoose builds indexes lazily. The unique constraints matter to these tests
- * (duplicate email, duplicate station name), so force them to exist first.
- */
+/** Kept for callers from the MongoDB era: constraints exist as soon as the schema loads. */
 export async function syncIndexes(): Promise<void> {
-  await Promise.all(Object.values(mongoose.models).map((model) => model.syncIndexes()));
+  return undefined;
 }

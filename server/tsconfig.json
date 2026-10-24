@@ -8,7 +8,8 @@
     "outDir": "dist",
     "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"]
+      "@/*": ["src/*"],
+      "@electric-sql/pglite/contrib/*": ["node_modules/@electric-sql/pglite/dist/contrib/*"]
     },
     "strict": true,
     "noImplicitOverride": true,

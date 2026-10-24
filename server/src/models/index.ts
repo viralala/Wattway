@@ -1,20 +1,19 @@
 /**
  * WattWay · Team Kothimbir 🌿
  * ---------------------------------------------------------------------------
- * Barrel for the Mongoose models. Import from here (`../models`) rather than
- * reaching into individual files, so model registration order stays under our
- * control and a circular import shows up in one place.
+ * Barrel for the data layer: one repository per Postgres table group. Import
+ * from here (`../models`) rather than reaching into individual files.
  * ---------------------------------------------------------------------------
  */
 
-export { User } from './User';
-export type { UserDocument, UserModel, VehicleProfile } from './User';
+export { Users } from './User';
+export type { User, VehicleProfile } from './User';
 
-export { Station } from './Station';
-export type { StationDocument, StationModel } from './Station';
+export { Stations } from './Station';
+export type { Station, StationInput } from './Station';
 
-export { Trip, TRIP_STATUSES } from './Trip';
-export type { TripDocument, TripModel, TripStatus } from './Trip';
+export { Trips, TRIP_STATUSES } from './Trip';
+export type { Trip, TripStatus } from './Trip';
 
-export { QueueEntry, QUEUE_STATUSES } from './QueueEntry';
-export type { QueueEntryDocument, QueueEntryModel, QueueStatus } from './QueueEntry';
+export { QueueEntries, QUEUE_STATUSES } from './QueueEntry';
+export type { LiveEntry, QueueStatus } from './QueueEntry';

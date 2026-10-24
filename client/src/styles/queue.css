@@ -66,3 +66,8 @@
 .q-log li.mine { color: var(--plum); font-weight: 600; }
 .q-log-time { font-family: ui-monospace, Consolas, monospace; color: var(--ink-soft); }
 .q-op { display: inline-block; margin-left: .4rem; font-family: ui-monospace, Consolas, monospace; font-size: .74rem; font-weight: 500; color: var(--ink); background: var(--leaf); padding: .05rem .4rem; border-radius: 4px; }
+
+/* ── Live queue ── */
+.q-join-opts { display: flex; flex-wrap: wrap; align-items: end; gap: 1rem; }
+.q-join-opts .field { margin: 0; max-width: 200px; }
+.q-charging { margin: .5rem 0 0; padding-left: 1.1rem; font-size: .92rem; }

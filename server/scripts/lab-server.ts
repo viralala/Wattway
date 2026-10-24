@@ -1,18 +1,18 @@
 /**
  * WattWay · Team Kothimbir 🌿
  * ---------------------------------------------------------------------------
- * lab-server.ts — serve the Express app WITHOUT MongoDB, for the Algorithm Lab.
+ * lab-server.ts — serve the Express app WITHOUT a database, for the Algorithm Lab.
  *
  * The Lab endpoints (/api/algorithms/*) are pure computation, so a demo of the
  * Lab shouldn't need a database. This script fills in placeholder env values,
  * skips connectDatabase(), and listens. Every database-backed route (stations,
- * auth, …) will fail here — use `npm run dev` with MongoDB for those.
+ * auth, …) will fail here — use `npm run dev` with DATABASE_URL for those.
  *
  *   npm run dev:lab      → http://localhost:4000/api/algorithms/graph
  * ---------------------------------------------------------------------------
  */
 
-process.env.MONGO_URI ??= 'mongodb://127.0.0.1:27017/wattway-lab-unused';
+process.env.DATABASE_URL ??= 'postgres://lab-mode-unused';
 process.env.JWT_ACCESS_SECRET ??= 'lab-only-access-secret-not-for-real-use-0000';
 process.env.JWT_REFRESH_SECRET ??= 'lab-only-refresh-secret-not-for-real-use-111';
 process.env.CORS_ORIGIN ??= 'http://localhost:5273';

@@ -94,6 +94,10 @@ export interface IndexedStation {
 
 /** A station as returned to clients, with per-request extras folded in. */
 export interface StationResult extends IndexedStation {
+  /** The port board, so a list view can show real port states without a second request. */
+  ports?: Port[];
+  /** Where the station's data came from: 'manual', 'seed' or 'osm' (OpenStreetMap). */
+  source?: string;
   /** Straight-line km from the caller's position, when one was supplied. */
   distanceKm?: number;
   /** Composite relevance/recommendation score, when the result was ranked. */
